@@ -1,4 +1,4 @@
-// Gestión de Cementerio - Frontend
+﻿// Gestión de Cementerio - Frontend
 class CementerioApp {
     constructor() {
         this.currentSection = 'dashboard';
@@ -9,15 +9,26 @@ class CementerioApp {
         this.currentSortDirection = 'asc';
         this.originalData = {}; // Para almacenar datos originales sin ordenar
         this.lastSearchData = null; // Para almacenar la última búsqueda realizada
+        this.difuntosPagina = 1;
+        this.parcelasPagina = 1;
+        this.registrosPorPagina = 50;
         this.init();
     }
 
     async init() {
+        // Aplicar tema e idioma guardados al arrancar
+        const savedTheme = localStorage.getItem('cementerio-theme') || 'light';
+        this.applyTheme(savedTheme);
+        if (window.i18n) window.i18n.applyToDOM();
+
+        await this.initLogin();
+
         this.bindNavigationEvents();
         this.bindModalEvents();
         this.bindFormEvents();
         this.bindSearchEvents();
         this.bindTableSortEvents();
+        this.bindParcelasFilters();
         
         // Inicializar ciudades populares
         this.inicializarCiudadesPopulares();
@@ -25,6 +36,8 @@ class CementerioApp {
         // Cargar dashboard inicial
         await this.loadDashboard();
         this.showSection('dashboard');
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     // Navegación
@@ -78,12 +91,15 @@ class CementerioApp {
                 case 'busqueda':
                     // La búsqueda se carga bajo demanda
                     break;
-                case 'configuracion':
+                case 'reportes':
+                break;
+            case 'configuracion':
                     await this.loadConfigurationInfo();
+                    await this.loadEtiquetas();
                     break;
             }
         } catch (error) {
-            this.showNotification('Error al cargar los datos: ' + error.message, 'error');
+            this.showNotification(t('err.load_data').replace('{n}', error.message), 'error');
         }
     }
 
@@ -95,12 +111,13 @@ class CementerioApp {
             
             const stats = await window.electronAPI.getEstadisticas();
             this.updateDashboardStats(stats);
-            
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+
             // Cargar actividad reciente
             await this.loadRecentActivity();
         } catch (error) {
             console.error('Error cargando dashboard:', error);
-            this.showNotification('Error al cargar las estadísticas', 'error');
+            this.showNotification(t('err.load_stats'), 'error');
         } finally {
             this.showDashboardLoading(false);
         }
@@ -128,7 +145,7 @@ class CementerioApp {
             // Mostrar animación de carga en el botón
             const refreshButton = document.querySelector('.refresh-activity');
             if (refreshButton && showNotification) {
-                refreshButton.innerHTML = '⟳ Actualizando...';
+                refreshButton.innerHTML = t('dash.refreshing');
                 refreshButton.disabled = true;
                 refreshButton.style.opacity = '0.6';
             }
@@ -138,13 +155,13 @@ class CementerioApp {
 
             // Mostrar notificación de éxito si se solicitó
             if (showNotification) {
-                this.showNotification('✅ Actividad reciente actualizada', 'success');
-                
+                this.showNotification(t('msg.activity_updated'), 'success');
+
                 // Indicador visual temporal en el header
                 const activityHeader = document.querySelector('.activity-header span');
                 if (activityHeader) {
                     const originalText = activityHeader.textContent;
-                    activityHeader.textContent = '✨ Actividad Actualizada';
+                    activityHeader.textContent = t('dash.activity_updated');
                     activityHeader.style.color = '#28a745';
                     
                     // Restaurar después de 2 segundos
@@ -158,7 +175,7 @@ class CementerioApp {
             // Restaurar botón
             if (refreshButton && showNotification) {
                 setTimeout(() => {
-                    refreshButton.innerHTML = '↻ Actualizar';
+                    refreshButton.innerHTML = t('btn.refresh');
                     refreshButton.disabled = false;
                     refreshButton.style.opacity = '1';
                 }, 500);
@@ -168,7 +185,7 @@ class CementerioApp {
             console.error('Error cargando actividad reciente:', error);
             
             if (showNotification) {
-                this.showNotification('❌ Error al actualizar actividad reciente', 'error');
+                this.showNotification(t('err.refresh_activity'), 'error');
             }
             
             // Restaurar botón en caso de error
@@ -191,28 +208,28 @@ class CementerioApp {
         if (!activities || activities.length === 0) {
             recentList.innerHTML = `
                 <div class="no-activity">
-                    <div class="activity-icon">📝</div>
-                    <p>No hay actividad reciente para mostrar.</p>
-                    <small>Las nuevas acciones aparecerán aquí.</small>
+                    <div class="no-activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+                    <p>${t('msg.no_activity')}</p>
                 </div>
             `;
             return;
         }
 
         const activitiesHtml = activities.map(activity => {
-            const icon = this.getActivityIcon(activity.tipo);
             const actionClass = this.getActivityActionClass(activity.accion, activity.tipo);
             const badge = this.getActivityBadge(activity.tipo);
-            
+            const desc = this.formatActivityDescription(activity.descripcion, activity.tipo);
+            const iconSvg = this.getActivityIconSvg(activity.tipo);
+
             return `
                 <div class="activity-item ${actionClass}">
-                    <div class="activity-icon">${icon}</div>
+                    <div class="activity-icon-wrap activity-icon-${activity.tipo}">${iconSvg}</div>
                     <div class="activity-content">
-                        <div class="activity-title">${activity.descripcion}</div>
-                        <div class="activity-action">${activity.accion}</div>
+                        <div class="activity-title">${desc}</div>
+                        <div class="activity-action">${this.translateAction(activity.accion)}</div>
                     </div>
                     <div class="activity-meta">
-                        <div class="activity-badge">${badge}</div>
+                        <span class="activity-badge activity-badge-${activity.tipo}">${badge}</span>
                         <div class="activity-time">${activity.fecha}</div>
                     </div>
                 </div>
@@ -221,9 +238,13 @@ class CementerioApp {
 
         recentList.innerHTML = `
             <div class="activity-header">
-                <span>📊 Actividad Reciente</span>
-                <button class="refresh-activity" onclick="app.loadRecentActivity(true)" title="Actualizar">
-                    ↻ Actualizar
+                <div class="activity-header-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    <span>${t('dash.recent')}</span>
+                </div>
+                <button class="refresh-activity" onclick="app.loadRecentActivity(true)" title="${t('btn.refresh')}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    ${t('btn.refresh')}
                 </button>
             </div>
             ${activitiesHtml}
@@ -268,13 +289,50 @@ class CementerioApp {
 
     getActivityBadge(tipo) {
         const badges = {
-            'difunto': 'Difunto',
-            'parcela': 'Parcela',
-            'sistema': 'Sistema',
-            'backup': 'Respaldo',
-            'optimizacion': 'Optimizado'
+            'difunto': t('badge.difunto'),
+            'parcela': t('badge.parcela'),
+            'sistema': t('badge.sistema'),
+            'backup': t('badge.respaldo'),
+            'optimizacion': t('badge.optimizado')
         };
-        return badges[tipo] || 'Acción';
+        return badges[tipo] || t('badge.accion');
+    }
+
+    shortParcelaCode(codigo) {
+        if (!codigo) return null;
+        const match = codigo.match(/^([A-Z]-\d+-\d+)/);
+        return match ? match[1] : codigo.substring(0, 10);
+    }
+
+    formatActivityDescription(descripcion, tipo) {
+        if (tipo === 'parcela') {
+            const match = descripcion.match(/([A-Z]-\d+-\d+)/);
+            if (match) return `${t('nav.plots').replace(/s$/,'')} <strong>${match[1]}</strong>`;
+        }
+        return descripcion.replace(/^(Parcela|Difunto)\s+/i, '<strong>$&</strong>');
+    }
+
+    translateAction(accion) {
+        const map = {
+            'Eliminado':     t('act.deleted_m'),
+            'Eliminada':     t('act.deleted_f'),
+            'Modificado':    t('act.modified_m'),
+            'Modificada':    t('act.modified_f'),
+            'Nuevo registro':t('act.new_record'),
+            'Nueva parcela': t('act.new_plot'),
+            'Respaldo':      t('act.backup'),
+            'Optimizado':    t('act.optimized'),
+        };
+        return map[accion] || accion;
+    }
+
+    getActivityIconSvg(tipo) {
+        const icons = {
+            'difunto': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+            'parcela': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+            'sistema': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>',
+        };
+        return icons[tipo] || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/></svg>';
     }
 
     updateDashboardStats(stats) {
@@ -287,10 +345,16 @@ class CementerioApp {
 
         Object.keys(statsCards).forEach(cardId => {
             const card = document.getElementById(cardId);
-            if (card) {
-                card.textContent = statsCards[cardId];
-            }
+            if (card) card.textContent = statsCards[cardId];
         });
+
+        const ingresosMes = document.getElementById('ingresos-mes');
+        if (ingresosMes) {
+            const v = parseFloat(stats.ingresosEsteMes || 0);
+            ingresosMes.textContent = (Number.isInteger(v) ? v : v.toFixed(2)) + ' €';
+        }
+        const ocupPct = document.getElementById('ocupacion-pct');
+        if (ocupPct) ocupPct.textContent = (stats.ocupacionPct || 0) + '%';
 
         // Hacer clickeables las tarjetas de estadísticas
         this.makeStatsCardsClickable();
@@ -302,7 +366,7 @@ class CementerioApp {
         if (totalDifuntosCard && totalDifuntosCard.parentElement) {
             const cardContainer = totalDifuntosCard.parentElement;
             cardContainer.style.cursor = 'pointer';
-            cardContainer.title = 'Haz clic para ver todos los difuntos';
+            cardContainer.title = t('dash.tip_deceased');
             
             // Remover event listeners previos
             cardContainer.replaceWith(cardContainer.cloneNode(true));
@@ -318,7 +382,7 @@ class CementerioApp {
         if (totalParcelasCard && totalParcelasCard.parentElement) {
             const cardContainer = totalParcelasCard.parentElement;
             cardContainer.style.cursor = 'pointer';
-            cardContainer.title = 'Haz clic para ver todas las parcelas';
+            cardContainer.title = t('dash.tip_plots');
             
             cardContainer.replaceWith(cardContainer.cloneNode(true));
             const newCardContainer = document.getElementById('total-parcelas').parentElement;
@@ -333,7 +397,7 @@ class CementerioApp {
         if (parcelasOcupadasCard && parcelasOcupadasCard.parentElement) {
             const cardContainer = parcelasOcupadasCard.parentElement;
             cardContainer.style.cursor = 'pointer';
-            cardContainer.title = 'Haz clic para ver las parcelas ocupadas';
+            cardContainer.title = t('dash.tip_occupied');
             
             cardContainer.replaceWith(cardContainer.cloneNode(true));
             const newCardContainer = document.getElementById('parcelas-ocupadas').parentElement;
@@ -348,7 +412,7 @@ class CementerioApp {
         if (parcelasDisponiblesCard && parcelasDisponiblesCard.parentElement) {
             const cardContainer = parcelasDisponiblesCard.parentElement;
             cardContainer.style.cursor = 'pointer';
-            cardContainer.title = 'Haz clic para ver las parcelas disponibles';
+            cardContainer.title = t('dash.tip_available');
             
             cardContainer.replaceWith(cardContainer.cloneNode(true));
             const newCardContainer = document.getElementById('parcelas-disponibles').parentElement;
@@ -365,7 +429,8 @@ class CementerioApp {
             this.showLoading('difuntos-table-container');
             const difuntos = await window.electronAPI.getDifuntos();
             this.originalData.difuntos = difuntos; // Guardar datos originales
-            
+            this.difuntosPagina = 1;
+
             // Aplicar ordenamiento por defecto: ID ascendente
             this.currentSortColumn = 'id';
             this.currentSortDirection = 'asc';
@@ -375,7 +440,7 @@ class CementerioApp {
             this.updateSortIcons('difuntos', 'id'); // Mostrar indicador visual
         } catch (error) {
             console.error('Error cargando difuntos:', error);
-            this.showNotification('Error al cargar los difuntos', 'error');
+            this.showNotification(t('err.load_dec'), 'error');
         } finally {
             this.hideLoading('difuntos-table-container');
         }
@@ -385,26 +450,58 @@ class CementerioApp {
         const tableBody = document.querySelector('#difuntos-table tbody');
         if (!tableBody) return;
 
-        tableBody.innerHTML = '';
+        const total = difuntos.length;
+        const rpp = this.registrosPorPagina;
+        const totalPaginas = Math.max(1, Math.ceil(total / rpp));
+        if (this.difuntosPagina > totalPaginas) this.difuntosPagina = totalPaginas;
+        const inicio = (this.difuntosPagina - 1) * rpp;
+        const fin = Math.min(inicio + rpp, total);
+        const pagina = difuntos.slice(inicio, fin);
 
-        difuntos.forEach(difunto => {
+        tableBody.innerHTML = '';
+        pagina.forEach(difunto => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>#${difunto.id}</td>
                 <td><strong>${difunto.nombre} ${difunto.apellidos}</strong></td>
                 <td>${this.formatDate(difunto.fecha_nacimiento)}</td>
                 <td>${this.formatDate(difunto.fecha_defuncion)}</td>
-                <td>${difunto.parcela_numero ? `🏛️ ${difunto.parcela_numero}` : '<span class="badge badge-sin-asignar">Sin asignar</span>'}</td>
+                <td>${difunto.parcela_codigo ? `<span class="parcela-code" title="${difunto.parcela_codigo}">${this.shortParcelaCode(difunto.parcela_codigo)}</span>` : `<span class="badge badge-sin-asignar">${t('msg.sin_asignar')}</span>`}</td>
                 <td class="action-buttons">
-                    <button class="btn btn-small btn-secondary" onclick="app.editDifunto(${difunto.id})">
-                        ✏️ Editar
-                    </button>
-                    <button class="btn btn-small btn-danger" onclick="app.deleteDifunto(${difunto.id})">
-                        🗑️ Eliminar
-                    </button>
+                    <button class="btn-icon btn-icon-edit" onclick="app.editDifunto(${difunto.id})" title="${t('btn.edit')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="btn-icon btn-icon-family" onclick="app.abrirFamiliares(${difunto.id}, '${difunto.nombre} ${difunto.apellidos}')" title="${t('nav.deceased')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>
+                    <button class="btn-icon btn-icon-pay" onclick="app.abrirPagos(${difunto.id}, '${difunto.nombre} ${difunto.apellidos}')" title="${t('rep.payments')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></button>
+                    <button class="btn-icon btn-icon-delete" onclick="app.deleteDifunto(${difunto.id})" title="${t('btn.delete')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
                 </td>
             `;
             tableBody.appendChild(row);
+        });
+
+        // Paginación
+        const container = document.getElementById('difuntos-table-container');
+        let pagBar = container.querySelector('.pagination-bar');
+        if (!pagBar) {
+            pagBar = document.createElement('div');
+            container.appendChild(pagBar);
+        }
+        if (total <= rpp) {
+            pagBar.innerHTML = '';
+            return;
+        }
+        const mostrandoInicio = total === 0 ? 0 : inicio + 1;
+        pagBar.className = 'pagination-bar';
+        pagBar.innerHTML = `
+            <span class="pagination-info">${t('pag.showing')} ${mostrandoInicio}-${fin} ${t('pag.of')} ${total} ${t('pag.records')}</span>
+            <div class="pagination-controls">
+                <button class="pag-btn" id="dif-pag-prev" ${this.difuntosPagina <= 1 ? 'disabled' : ''}>${t('pag.prev')}</button>
+                <span class="pag-pages">${t('pag.page')} ${this.difuntosPagina} ${t('pag.of')} ${totalPaginas}</span>
+                <button class="pag-btn" id="dif-pag-next" ${this.difuntosPagina >= totalPaginas ? 'disabled' : ''}>${t('pag.next')}</button>
+            </div>`;
+        pagBar.querySelector('#dif-pag-prev')?.addEventListener('click', () => {
+            if (this.difuntosPagina > 1) { this.difuntosPagina--; this.renderDifuntosTable(difuntos); }
+        });
+        pagBar.querySelector('#dif-pag-next')?.addEventListener('click', () => {
+            if (this.difuntosPagina < totalPaginas) { this.difuntosPagina++; this.renderDifuntosTable(difuntos); }
         });
     }
 
@@ -414,7 +511,9 @@ class CementerioApp {
             this.showLoading('parcelas-table-container');
             const parcelas = await window.electronAPI.getParcelas();
             this.originalData.parcelas = parcelas; // Guardar datos originales
-            
+            this.populateParcelasFilterSelects();
+            this.parcelasPagina = 1;
+
             // Aplicar ordenamiento por defecto: Código ascendente
             this.currentSortColumn = 'codigo';
             this.currentSortDirection = 'asc';
@@ -424,7 +523,7 @@ class CementerioApp {
             this.updateSortIcons('parcelas', 'codigo'); // Mostrar indicador visual
         } catch (error) {
             console.error('Error cargando parcelas:', error);
-            this.showNotification('Error al cargar las parcelas', 'error');
+            this.showNotification(t('err.load_plots'), 'error');
         } finally {
             this.hideLoading('parcelas-table-container');
         }
@@ -434,9 +533,16 @@ class CementerioApp {
         const tableBody = document.querySelector('#parcelas-table tbody');
         if (!tableBody) return;
 
-        tableBody.innerHTML = '';
+        const total = parcelas.length;
+        const rpp = this.registrosPorPagina;
+        const totalPaginas = Math.max(1, Math.ceil(total / rpp));
+        if (this.parcelasPagina > totalPaginas) this.parcelasPagina = totalPaginas;
+        const inicio = (this.parcelasPagina - 1) * rpp;
+        const fin = Math.min(inicio + rpp, total);
+        const pagina = parcelas.slice(inicio, fin);
 
-        parcelas.forEach(parcela => {
+        tableBody.innerHTML = '';
+        pagina.forEach(parcela => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${parcela.codigo}</td>
@@ -445,18 +551,41 @@ class CementerioApp {
                 <td>${parcela.seccion}-${parcela.numero}</td>
                 <td>${parcela.fila || 'S/N'}</td>
                 <td><span class="badge badge-ubicacion">${parcela.ubicacion || 'N/A'}</span></td>
-                <td><span class="status ${parcela.estado}">${parcela.estado}</span></td>
+                <td><span class="badge badge-${parcela.estado}">${this.translateStatus(parcela.estado)}</span></td>
                 <td>${parcela.precio ? '$' + parcela.precio.toFixed(2) : 'N/A'}</td>
                 <td class="action-buttons">
-                    <button class="btn btn-small btn-secondary" onclick="app.editParcela(${parcela.id})">
-                        ✏️ Editar
-                    </button>
-                    <button class="btn btn-small btn-danger" onclick="app.deleteParcela(${parcela.id})">
-                        🗑️ Eliminar
-                    </button>
+                    <button class="btn-icon btn-icon-edit" onclick="app.editParcela(${parcela.id})" title="${t('btn.edit')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="btn-icon btn-icon-delete" onclick="app.deleteParcela(${parcela.id})" title="${t('btn.delete')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
                 </td>
             `;
             tableBody.appendChild(row);
+        });
+
+        // Paginación
+        const container = document.getElementById('parcelas-table-container');
+        let pagBar = container.querySelector('.pagination-bar');
+        if (!pagBar) {
+            pagBar = document.createElement('div');
+            container.appendChild(pagBar);
+        }
+        if (total <= rpp) {
+            pagBar.innerHTML = '';
+            return;
+        }
+        const mostrandoInicio = total === 0 ? 0 : inicio + 1;
+        pagBar.className = 'pagination-bar';
+        pagBar.innerHTML = `
+            <span class="pagination-info">${t('pag.showing')} ${mostrandoInicio}-${fin} ${t('pag.of')} ${total} ${t('pag.records')}</span>
+            <div class="pagination-controls">
+                <button class="pag-btn" id="par-pag-prev" ${this.parcelasPagina <= 1 ? 'disabled' : ''}>${t('pag.prev')}</button>
+                <span class="pag-pages">${t('pag.page')} ${this.parcelasPagina} ${t('pag.of')} ${totalPaginas}</span>
+                <button class="pag-btn" id="par-pag-next" ${this.parcelasPagina >= totalPaginas ? 'disabled' : ''}>${t('pag.next')}</button>
+            </div>`;
+        pagBar.querySelector('#par-pag-prev')?.addEventListener('click', () => {
+            if (this.parcelasPagina > 1) { this.parcelasPagina--; this.renderParcelasTable(parcelas); }
+        });
+        pagBar.querySelector('#par-pag-next')?.addEventListener('click', () => {
+            if (this.parcelasPagina < totalPaginas) { this.parcelasPagina++; this.renderParcelasTable(parcelas); }
         });
     }
 
@@ -495,24 +624,23 @@ class CementerioApp {
             await this.loadParcelasDisponibles();
             
             // Restaurar título del modal
-            const modalTitle = document.querySelector('#modal-difunto .modal-header h3');
-            if (modalTitle) modalTitle.textContent = 'Nuevo Difunto';
+            const modalTitle = document.getElementById('modal-difunto-title');
+            if (modalTitle) modalTitle.textContent = t('dec.new');
             
             this.openModal('modal-difunto');
         });
 
-        document.getElementById('btn-nueva-parcela')?.addEventListener('click', () => {
-            // Limpiar modo edición para parcelas también
+        document.getElementById('btn-nueva-parcela')?.addEventListener('click', async () => {
             const form = document.getElementById('form-parcela');
             if (form) {
                 delete form.dataset.editingId;
                 form.reset();
             }
-            
-            // Restaurar título del modal
-            const modalTitle = document.querySelector('#modal-parcela .modal-header h3');
-            if (modalTitle) modalTitle.textContent = 'Nueva Parcela';
-            
+
+            const modalTitle = document.getElementById('modal-parcela-title');
+            if (modalTitle) modalTitle.textContent = t('plot.new');
+
+            await this.populateParcelaSelects();
             this.openModal('modal-parcela');
         });
     }
@@ -559,12 +687,22 @@ class CementerioApp {
 
     async handleDifuntoSubmit(e) {
         e.preventDefault();
-        
+
+        // Validación
+        const f = e.target;
+        const isValid = this.validateForm([
+            { el: f.querySelector('[name="nombre"]'),         rules: { required: true, minLength: 2 } },
+            { el: f.querySelector('[name="apellidos"]'),      rules: { required: true, minLength: 2 } },
+            { el: f.querySelector('[name="fecha_defuncion"]'),rules: { required: true } },
+            { el: f.querySelector('[name="fecha_nacimiento"]'),rules: { beforeDate: 'fecha_defuncion' } },
+        ]);
+        if (!isValid) return;
+
         const formData = new FormData(e.target);
         const difuntoData = {
             nombre: formData.get('nombre'),
             apellidos: formData.get('apellidos'),
-            documento: formData.get('documento'),
+            cedula: formData.get('cedula'),
             sexo: formData.get('sexo') || 'M', // Valor por defecto si no se selecciona
             fecha_nacimiento: formData.get('fecha_nacimiento'),
             fecha_defuncion: formData.get('fecha_defuncion'),
@@ -580,11 +718,11 @@ class CementerioApp {
             if (editingId) {
                 // Actualizar difunto existente
                 await window.electronAPI.updateDifunto(editingId, difuntoData);
-                this.showNotification('Difunto actualizado correctamente', 'success');
+                this.showNotification(t('msg.dec_updated'), 'success');
             } else {
                 // Crear nuevo difunto
                 await window.electronAPI.createDifunto(difuntoData);
-                this.showNotification('Difunto registrado correctamente', 'success');
+                this.showNotification(t('msg.dec_saved'), 'success');
             }
             
             this.closeModal('modal-difunto');
@@ -606,13 +744,26 @@ class CementerioApp {
             await this.loadRecentActivity(); // Actualizar actividad reciente
         } catch (error) {
             console.error('Error procesando difunto:', error);
-            this.showNotification('Error al procesar el difunto: ' + error.message, 'error');
+            this.showNotification(t('err.save_dec').replace('{n}', error.message), 'error');
         }
     }
 
     async handleParcelaSubmit(e) {
         e.preventDefault();
-        
+
+        // Validación
+        const f = e.target;
+        const isValid = this.validateForm([
+            { el: f.querySelector('[name="codigo"]'),   rules: { required: true } },
+            { el: f.querySelector('[name="tipo"]'),     rules: { required: true } },
+            { el: f.querySelector('[name="zona"]'),     rules: { required: true } },
+            { el: f.querySelector('[name="ubicacion"]'),rules: { required: true } },
+            { el: f.querySelector('[name="seccion"]'),  rules: { required: true } },
+            { el: f.querySelector('[name="numero"]'),   rules: { required: true, gt: 0 } },
+            { el: f.querySelector('[name="precio"]'),   rules: { min: 0 } },
+        ]);
+        if (!isValid) return;
+
         const formData = new FormData(e.target);
         const parcelaData = {
             codigo: formData.get('codigo'),
@@ -632,11 +783,11 @@ class CementerioApp {
             if (editingId) {
                 // Actualizar parcela existente
                 await window.electronAPI.updateParcela(editingId, parcelaData);
-                this.showNotification('✅ Parcela actualizada correctamente', 'success');
+                this.showNotification(t('msg.plot_updated'), 'success');
             } else {
                 // Crear nueva parcela
                 await window.electronAPI.createParcela(parcelaData);
-                this.showNotification('✅ Parcela creada correctamente', 'success');
+                this.showNotification(t('msg.plot_saved'), 'success');
             }
             
             this.closeModal('modal-parcela');
@@ -651,38 +802,126 @@ class CementerioApp {
             await this.loadRecentActivity(); // Actualizar actividad reciente
         } catch (error) {
             console.error('Error procesando parcela:', error);
-            this.showNotification('❌ Error al procesar la parcela: ' + error.message, 'error');
+            this.showNotification(t('err.save_plot').replace('{n}', error.message), 'error');
         }
     }
 
     // Búsqueda
     bindSearchEvents() {
-        const searchForm = document.getElementById('search-form');
-        const clearButton = document.querySelector('#search-form button[type="reset"]');
-
-        if (searchForm) {
-            searchForm.addEventListener('submit', (e) => this.handleSearch(e));
+        const globalInput = document.getElementById('global-search-input');
+        if (globalInput) {
+            globalInput.addEventListener('input', this.debounce(() => this.handleGlobalSearch(), 250));
+            globalInput.addEventListener('keydown', (e) => { if (e.key === 'Escape') this.closeGlobalSearch(); });
+            document.addEventListener('click', (e) => { if (!e.target.closest('.sidebar-search')) this.closeGlobalSearch(); });
         }
 
-        if (clearButton) {
-            clearButton.addEventListener('click', (e) => this.handleClearSearch(e));
-        }
+        const advancedFields = ['search-nombre','search-apellidos','search-estado','search-ciudad','search-parcela','search-fecha-desde','search-fecha-hasta'];
+        advancedFields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', this.debounce(() => this.handleAdvancedSearch(), 300));
+        });
+
+        const clearBtn = document.getElementById('search-clear-btn');
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearAdvancedSearch());
     }
 
-    handleClearSearch(e) {
-        // Limpiar los resultados de búsqueda
-        const resultsContainer = document.getElementById('search-results');
-        if (resultsContainer) {
-            resultsContainer.innerHTML = '<p>Utiliza los filtros para buscar registros</p>';
-            resultsContainer.className = 'search-results empty';
+    async handleGlobalSearch() {
+        const input = document.getElementById('global-search-input');
+        const dropdown = document.getElementById('global-search-results');
+        const q = input.value.trim();
+        if (q.length < 2) { dropdown.style.display = 'none'; return; }
+
+        const difuntos = await window.electronAPI.searchDifuntos(q);
+        const results = (difuntos || []).slice(0, 8);
+
+        if (!results.length) {
+            dropdown.innerHTML = `<div class="gsr-empty">${t('msg.no_results')}</div>`;
+        } else {
+            dropdown.innerHTML = results.map(d =>
+                '<div class="gsr-item" onclick="app.closeGlobalSearch(); app.showSection(\'difuntos\'); app.editDifunto(' + d.id + ')">' +
+                '<span class="gsr-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>' +
+                '<span class="gsr-name">' + d.nombre + ' ' + d.apellidos + '</span>' +
+                '<span class="gsr-meta">' + (d.parcela_codigo || t('msg.sin_parcela')) + '</span>' +
+                '</div>'
+            ).join('');
         }
-        
-        // Limpiar la última búsqueda guardada
-        this.lastSearchData = null;
-        
-        // Mostrar notificación
-        this.showNotification('Búsqueda limpiada', 'success');
+        dropdown.style.display = 'block';
     }
+
+    closeGlobalSearch() {
+        const dropdown = document.getElementById('global-search-results');
+        const input = document.getElementById('global-search-input');
+        if (dropdown) dropdown.style.display = 'none';
+        if (input) input.value = '';
+    }
+
+    async handleAdvancedSearch() {
+        const get = (id) => (document.getElementById(id) ? document.getElementById(id).value.trim() : '');
+        const nombre = get('search-nombre');
+        const apellidos = get('search-apellidos');
+        const estado = get('search-estado');
+        const ciudad = get('search-ciudad');
+        const parcela = get('search-parcela');
+        const desde = get('search-fecha-desde');
+        const hasta = get('search-fecha-hasta');
+        const results = document.getElementById('search-results');
+        const countEl = document.getElementById('search-count');
+
+        if (!nombre && !apellidos && !estado && !ciudad && !parcela && !desde && !hasta) {
+            results.innerHTML = `<p class="search-placeholder">${t('search.placeholder')}</p>`;
+            if (countEl) countEl.textContent = '';
+            return;
+        }
+
+        results.innerHTML = `<p class="search-placeholder">${t('msg.searching')}</p>`;
+        const difuntos = await window.electronAPI.getDifuntos({ limit: 9999 });
+        let filtered = difuntos || [];
+
+        if (nombre) filtered = filtered.filter(d => this.normalize(d.nombre).includes(this.normalize(nombre)));
+        if (apellidos) filtered = filtered.filter(d => this.normalize(d.apellidos).includes(this.normalize(apellidos)));
+        if (estado) filtered = filtered.filter(d => d.estado === estado);
+        if (ciudad) filtered = filtered.filter(d => this.normalize(d.ciudad_defuncion).includes(this.normalize(ciudad)));
+        if (parcela) filtered = filtered.filter(d => this.normalize(d.parcela_codigo).includes(this.normalize(parcela)));
+        if (desde) filtered = filtered.filter(d => d.fecha_defuncion >= desde);
+        if (hasta) filtered = filtered.filter(d => d.fecha_defuncion <= hasta);
+
+        if (countEl) countEl.textContent = filtered.length + ' ' + t(filtered.length !== 1 ? 'search.count_many' : 'search.count_one');
+
+        if (!filtered.length) {
+            results.innerHTML = `<p class="search-placeholder">${t('msg.no_results')}</p>`;
+            return;
+        }
+
+        const rows = filtered.map(d =>
+            '<tr>' +
+            '<td><strong>' + d.nombre + ' ' + d.apellidos + '</strong></td>' +
+            '<td>' + this.formatDate(d.fecha_defuncion) + '</td>' +
+            '<td>' + (d.ciudad_defuncion || '—') + '</td>' +
+            '<td>' + (d.parcela_codigo ? '<span class="parcela-code" title="' + d.parcela_codigo + '">' + this.shortParcelaCode(d.parcela_codigo) + '</span>' : '—') + '</td>' +
+            '<td><span class="badge badge-' + d.estado + '">' + this.translateStatus(d.estado) + '</span></td>' +
+            '<td class="action-buttons">' +
+            '<button class="btn-icon btn-icon-edit" onclick="app.showSection(\'difuntos\'); app.editDifunto(' + d.id + ')" title="' + t('btn.edit') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
+            '<button class="btn-icon btn-icon-family" onclick="app.abrirFamiliares(' + d.id + ', \'' + d.nombre + ' ' + d.apellidos + '\')" title="' + t('nav.deceased') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></button>' +
+            '<button class="btn-icon btn-icon-pay" onclick="app.abrirPagos(' + d.id + ', \'' + d.nombre + ' ' + d.apellidos + '\')" title="' + t('rep.payments') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></button>' +
+            '</td>' +
+            '</tr>'
+        ).join('');
+
+        results.innerHTML = '<table class="search-table"><thead><tr><th>' + t('th.name') + '</th><th>' + t('th.death_date_short') + '</th><th>' + t('th.city') + '</th><th>' + t('th.plot_short') + '</th><th>' + t('th.status_short') + '</th><th></th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    clearAdvancedSearch() {
+        ['search-nombre','search-apellidos','search-estado','search-ciudad','search-parcela','search-fecha-desde','search-fecha-hasta'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        const results = document.getElementById('search-results');
+        if (results) results.innerHTML = `<p class="search-placeholder">${t('search.placeholder')}</p>`;
+        const countEl = document.getElementById('search-count');
+        if (countEl) countEl.textContent = '';
+    }
+
+
 
     async handleSearch(e) {
         e.preventDefault();
@@ -699,7 +938,7 @@ class CementerioApp {
         const hasSearchData = Object.values(searchData).some(value => value && value.trim() !== '');
         
         if (!hasSearchData) {
-            this.showNotification('Por favor, ingrese al menos un criterio de búsqueda', 'info');
+            this.showNotification(t('msg.search_empty'), 'info');
             return;
         }
 
@@ -719,11 +958,12 @@ class CementerioApp {
     }
 
     renderSearchResults(results) {
+        this._lastSearchResults = results;
         const container = document.getElementById('search-results');
         if (!container) return;
 
         if (results.length === 0) {
-            container.innerHTML = '<p class="empty">No se encontraron resultados</p>';
+            container.innerHTML = `<p class="empty">${t('msg.no_results')}</p>`;
             container.className = 'search-results empty';
             return;
         }
@@ -734,10 +974,10 @@ class CementerioApp {
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Nombre Completo</th>
-                        <th>Fecha Defunción</th>
-                        <th>Parcela Asignada</th>
-                        <th class="action-header">Acciones</th>
+                        <th>${t('th.full_name')}</th>
+                        <th>${t('th.deathdate')}</th>
+                        <th>${t('dec.plot')}</th>
+                        <th class="action-header">${t('th.actions')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -748,14 +988,12 @@ class CementerioApp {
                             <td>${this.formatDate(result.fecha_defuncion)}</td>
                             <td>
                                 ${result.parcela_codigo 
-                                    ? `🏛️ ${result.parcela_codigo}` 
-                                    : '<span class="badge badge-sin-asignar">Sin asignar</span>'
+                                    ? `<span class="parcela-code">${this.shortParcelaCode(result.parcela_codigo) || result.parcela_codigo}</span>`
+                                    : `<span class="badge badge-sin-asignar">${t('msg.sin_asignar')}</span>`
                                 }
                             </td>
                             <td class="action-buttons">
-                                <button class="btn btn-small btn-primary" onclick="app.editDifunto(${result.id})">
-                                    ✏️ Editar
-                                </button>
+                                <button class="btn-icon btn-icon-edit" onclick="app.editDifunto(${result.id})" title="${t('btn.edit')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                             </td>
                         </tr>
                     `).join('')}
@@ -776,7 +1014,7 @@ class CementerioApp {
             this.renderSearchResults(results);
         } catch (error) {
             console.error('Error refrescando búsqueda:', error);
-            this.showNotification('Error al actualizar los resultados de búsqueda: ' + error.message, 'error');
+            this.showNotification(t('err.search').replace('{n}', error.message), 'error');
         } finally {
             this.hideLoading('search-results');
         }
@@ -885,7 +1123,7 @@ class CementerioApp {
             
             if (select) {
                 // Limpiar opciones existentes excepto la primera
-                select.innerHTML = '<option value="">Sin asignar</option>';
+                select.innerHTML = `<option value="">${t('dec.no_plot')}</option>`;
                 
                 // Agregar parcelas disponibles
                 parcelas.forEach(parcela => {
@@ -916,7 +1154,7 @@ class CementerioApp {
             statusDiv.className = 'parcela-status-right';
             
             // Extraer información más clara de la parcela
-            let parcelaInfo = 'Parcela seleccionada';
+            let parcelaInfo = t('dec.plot_selected');
             if (parcelaText && parcelaText.trim() !== '') {
                 // Si el texto viene en formato "CÓDIGO - SECCIÓN-NUMERO (TIPO)"
                 // Extraer solo la parte más importante
@@ -943,12 +1181,12 @@ class CementerioApp {
                 }
             }
             
-            messageSpan.textContent = `Parcela asignada: ${parcelaInfo}`;
+            messageSpan.textContent = `${t('dec.plot_assigned')}: ${parcelaInfo}`;
         } else {
             // Sin parcela
             statusDiv.style.display = 'flex';
             statusDiv.className = 'parcela-status-right sin-asignar';
-            messageSpan.textContent = 'Sin parcela asignada';
+            messageSpan.textContent = t('dec.no_plot');
         }
     }
 
@@ -978,11 +1216,11 @@ class CementerioApp {
                 const parcelaInfo = `${parcela.codigo} - ${parcela.seccion}-${parcela.numero} (${parcela.tipo})`;
                 this.updateParcelaMessage(parcelaId, parcelaInfo);
             } else {
-                this.updateParcelaMessage(parcelaId, 'Parcela no encontrada');
+                this.updateParcelaMessage(parcelaId, t('dec.no_plot'));
             }
         } catch (error) {
             console.error('Error obteniendo información de parcela:', error);
-            this.updateParcelaMessage(parcelaId, 'Error obteniendo parcela');
+            this.updateParcelaMessage(parcelaId, t('dec.no_plot'));
         }
     }
 
@@ -1028,7 +1266,6 @@ class CementerioApp {
                         }
                     });
                 } catch (apiError) {
-                    console.log('APIs no disponibles, usando solo búsqueda local:', apiError.message);
                 }
             }
 
@@ -1091,7 +1328,6 @@ class CementerioApp {
                 });
             }
         } catch (error) {
-            console.log('API REST Countries no disponible:', error.message);
         }
 
         // 2. API de OpenStreetMap Nominatim (alternativa gratuita y robusta)
@@ -1128,7 +1364,6 @@ class CementerioApp {
                 });
             }
         } catch (error) {
-            console.log('API Nominatim no disponible:', error.message);
         }
 
         // 3. API adicional para ciudades españolas (usando API del gobierno)
@@ -1154,7 +1389,6 @@ class CementerioApp {
                 }
             }
         } catch (error) {
-            console.log('API GeoAPI España no disponible:', error.message);
         }
 
         return ciudades.slice(0, 15); // Limitar resultados de API para no saturar
@@ -1371,13 +1605,13 @@ class CementerioApp {
             form.dataset.editingId = id;
             
             // Cambiar el título del modal
-            const modalTitle = document.querySelector('#modal-difunto .modal-header h3');
-            if (modalTitle) modalTitle.textContent = 'Editar Difunto';
+            const modalTitle = document.getElementById('modal-difunto-title');
+            if (modalTitle) modalTitle.textContent = t('dec.edit');
             
             this.openModal('modal-difunto');
         } catch (error) {
             console.error('Error editando difunto:', error);
-            this.showNotification('Error al cargar los datos del difunto', 'error');
+            this.showNotification(t('err.load_dec_data'), 'error');
         }
     }
 
@@ -1390,42 +1624,47 @@ class CementerioApp {
                 return;
             }
 
-            // Mostrar diálogo de confirmación personalizado
+            const parcelaCode = difunto.parcela_codigo ? this.shortParcelaCode(difunto.parcela_codigo) : null;
             const message = `
-                <div class="confirmation-dialog compact">
-                    <div class="warning-section">
-                        <div class="warning-icon">⚠️</div>
-                        <h3>Eliminar Registro de Difunto</h3>
+                <div class="confirm-delete-body">
+                    <div class="confirm-delete-icon confirm-delete-icon--danger">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     </div>
-                    
-                    <div class="compact-info">
-                        <strong>👤 ${difunto.nombre} ${difunto.apellidos}</strong> (ID: ${difunto.id})<br>
-                        📅 ${this.formatDate(difunto.fecha_nacimiento)} - ${this.formatDate(difunto.fecha_defuncion)}<br>
-                        ${difunto.lugar_nacimiento ? `📍 ${difunto.lugar_nacimiento}<br>` : ''}${difunto.parcela_codigo ? `🏛️ Parcela: ${difunto.parcela_codigo}` : '<span class="badge badge-sin-asignar">Sin parcela asignada</span>'}
+                    <p class="confirm-delete-title">${t('dlg.delete_record_q')}</p>
+                    <div class="confirm-delete-card">
+                        <div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <strong>${difunto.nombre} ${difunto.apellidos}</strong>
+                        </div>
+                        ${difunto.fecha_defuncion ? `<div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span>${this.formatDate(difunto.fecha_nacimiento)} — ${this.formatDate(difunto.fecha_defuncion)}</span>
+                        </div>` : ''}
+                        ${difunto.lugar_nacimiento ? `<div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span>${difunto.lugar_nacimiento}</span>
+                        </div>` : ''}
+                        ${parcelaCode ? `<div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                            <span>Parcela: <code>${parcelaCode}</code> — se liberará automáticamente</span>
+                        </div>` : ''}
                     </div>
-                    
-                    ${difunto.parcela_codigo ? `
-                    <div class="info-notice">
-                        <p>La parcela asignada será liberada automáticamente.</p>
-                    </div>
-                    ` : ''}
-                </div>
-            `;
+                    <p class="confirm-delete-warning">${t('dlg.cannot_undo')}</p>
+                </div>`;
 
             const result = await this.showCustomDialog({
-                title: '⚠️ Confirmar Eliminación de Difunto',
-                message: message,
-                headerClass: 'about-header',
+                title: t('dlg.confirm_delete'),
+                message,
                 buttons: [
-                    { id: 'btn-confirm', class: 'btn-danger-modern', text: '🗑️ Eliminar Registro', value: 'confirm' }
-                ],
-                critical: true
+                    { id: 'btn-cancel',  class: 'btn-secondary',     text: t('btn.cancel'),        value: 'cancel' },
+                    { id: 'btn-confirm', class: 'btn-danger-modern',  text: t('btn.delete_record'), value: 'confirm' }
+                ]
             });
 
             if (result === 'confirm') {
                 try {
                     await window.electronAPI.deleteDifunto(id);
-                    this.showNotification('Registro eliminado correctamente', 'success');
+                    this.showNotification(t('msg.dec_deleted'), 'success');
                     
                     // Actualizar la sección actual si corresponde
                     if (this.currentSection === 'difuntos') {
@@ -1439,13 +1678,13 @@ class CementerioApp {
                     await this.loadDashboard();
                     await this.loadRecentActivity(); // Actualizar actividad reciente
                 } catch (error) {
-                    this.showNotification('Error al eliminar el registro', 'error');
+                    this.showNotification(t('err.del_record'), 'error');
                 }
             }
 
         } catch (error) {
             console.error('Error en deleteDifunto:', error);
-            this.showNotification('Error al cargar la información del difunto', 'error');
+            this.showNotification(t('err.load_dec_info'), 'error');
         }
     }
 
@@ -1453,19 +1692,20 @@ class CementerioApp {
         try {
             const parcela = await window.electronAPI.getParcela(id);
             this.populateParcelaForm(parcela);
-            
+            await this.populateParcelaSelects({ tipo: parcela.tipo, zona: parcela.zona, ubicacion: parcela.ubicacion });
+
             // Marcar el formulario como en modo edición
             const form = document.getElementById('form-parcela');
             form.dataset.editingId = id;
-            
+
             // Cambiar el título del modal
-            const modalTitle = document.querySelector('#modal-parcela .modal-header h3');
-            if (modalTitle) modalTitle.textContent = 'Editar Parcela';
-            
+            const modalTitle = document.getElementById('modal-parcela-title');
+            if (modalTitle) modalTitle.textContent = t('plot.edit');
+
             this.openModal('modal-parcela');
         } catch (error) {
             console.error('Error editando parcela:', error);
-            this.showNotification('Error al cargar los datos de la parcela', 'error');
+            this.showNotification(t('err.load_plot_data'), 'error');
         }
     }
 
@@ -1475,7 +1715,7 @@ class CementerioApp {
             const dependencies = await window.electronAPI.checkParcelaDependencies(id);
             
             if (dependencies.error) {
-                this.showNotification('Error al verificar la parcela: ' + dependencies.error, 'error');
+                this.showNotification(t('err.verify_plot').replace('{n}', dependencies.error), 'error');
                 return;
             }
             
@@ -1486,69 +1726,72 @@ class CementerioApp {
             
         } catch (error) {
             console.error('Error en deleteParcela:', error);
-            this.showNotification('Error al procesar la eliminación de la parcela', 'error');
+            this.showNotification(t('err.del_plot'), 'error');
         }
     }
     
     showParcelaDeleteConfirmation(parcela, difuntosAsignados, canDelete) {
-        let message, headerClass, buttons;
-        
+        const code = this.shortParcelaCode(parcela.codigo) || parcela.codigo;
+        let message, buttons;
+
         if (canDelete) {
-            // Sin dependencias - eliminación simple (formato compacto)
             message = `
-                <div class="confirmation-dialog compact">
-                    <div class="parcela-info-section">
-                        <div class="success-icon">✅</div>
-                        <h3>Eliminación Simple</h3>
-                        <div class="compact-info">
-                            <strong>📍 Parcela:</strong> ${parcela.codigo} (${parcela.tipo})<br>
-                            <strong>🗺️ Ubicación:</strong> ${parcela.zona} - ${parcela.seccion}-${parcela.numero}
+                <div class="confirm-delete-body">
+                    <div class="confirm-delete-icon confirm-delete-icon--danger">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    </div>
+                    <p class="confirm-delete-title">${t('dlg.delete_plot_q')}</p>
+                    <div class="confirm-delete-card">
+                        <div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <strong><code>${code}</code> — ${parcela.tipo}</strong>
                         </div>
-                        <div class="safe-delete-notice">
-                            <p>Esta parcela no tiene difuntos asignados y se puede eliminar de forma segura.</p>
+                        <div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                            <span>${parcela.zona} · Sección ${parcela.seccion} · Nº ${parcela.numero}</span>
+                        </div>
+                        <div class="confirm-delete-row confirm-delete-row--ok">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>${t('plot.del_safe')}</span>
                         </div>
                     </div>
-                </div>
-            `;
-            headerClass = 'about-header';
+                    <p class="confirm-delete-warning">${t('dlg.cannot_undo')}</p>
+                </div>`;
             buttons = [
-                { id: 'btn-confirm', class: 'btn-danger-modern', text: '🗑️ Eliminar Parcela', value: 'confirm' }
+                { id: 'btn-cancel',  class: 'btn-secondary',    text: t('btn.cancel'),      value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-danger-modern', text: t('btn.delete_plot'), value: 'confirm' }
             ];
         } else {
-            // Con dependencias - eliminación con liberación (formato compacto)
-            const difuntosCompactos = difuntosAsignados.map(d => `👤 ${d.nombre} ${d.apellidos} (ID: ${d.id})`).join(', ');
-            
+            const lista = difuntosAsignados.map(d =>
+                `<div class="confirm-delete-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>${d.nombre} ${d.apellidos}</span></div>`
+            ).join('');
             message = `
-                <div class="confirmation-dialog compact">
-                    <div class="warning-section">
-                        <div class="warning-icon">⚠️</div>
-                        <h3>Parcela con ${difuntosAsignados.length} Difunto(s)</h3>
+                <div class="confirm-delete-body">
+                    <div class="confirm-delete-icon confirm-delete-icon--warning">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     </div>
-                    
-                    <div class="compact-info">
-                        <p><strong>🏞️ Parcela:</strong> ${parcela.codigo} (${parcela.tipo})</p>
-                        <p><strong>⚰️ Difuntos:</strong> ${difuntosCompactos}</p>
-                        <p><strong>⚠️ Acción:</strong> Los difuntos serán liberados automáticamente</p>
+                    <p class="confirm-delete-title">${t(difuntosAsignados.length !== 1 ? 'plot.del_with_many' : 'plot.del_with_one').replace('{n}', difuntosAsignados.length)}</p>
+                    <div class="confirm-delete-card">
+                        <div class="confirm-delete-row">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <strong><code>${code}</code> — ${parcela.tipo}</strong>
+                        </div>
+                        ${lista}
+                        <div class="confirm-delete-row confirm-delete-row--warn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span>${t('msg.dec_unassigned')}</span>
+                        </div>
                     </div>
-                </div>
-            `;
-            headerClass = 'about-header';
+                    <p class="confirm-delete-warning">${t('dlg.cannot_undo')}</p>
+                </div>`;
             buttons = [
-                { id: 'btn-confirm', class: 'btn-warning-modern', text: '🔄 Liberar y Eliminar', value: 'confirm' }
+                { id: 'btn-cancel',  class: 'btn-secondary',      text: t('btn.cancel'),         value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-warning-modern',  text: t('btn.release_delete'), value: 'confirm' }
             ];
         }
-        
-        this.showCustomDialog({
-            title: '⚠️ Confirmar Eliminación de Parcela',
-            message: message,
-            headerClass: 'about-header',
-            buttons: buttons,
-            critical: true
-        }).then((result) => {
-            if (result === 'confirm') {
-                this.performParcelaDelete(parcela.id, !canDelete);
-            }
-        });
+
+        this.showCustomDialog({ title: t('dlg.confirm_delete'), message, buttons })
+            .then(result => { if (result === 'confirm') this.performParcelaDelete(parcela.id, !canDelete); });
     }
     
     async performParcelaDelete(id, isForced) {
@@ -1558,11 +1801,11 @@ class CementerioApp {
             if (isForced) {
                 // Eliminación forzada: liberar difuntos primero
                 result = await window.electronAPI.forceDeleteParcela(id);
-                this.showNotification('✅ Parcela eliminada y difuntos liberados correctamente', 'success');
+                this.showNotification(t('msg.plot_del_freed'), 'success');
             } else {
                 // Eliminación normal
                 result = await window.electronAPI.deleteParcela(id);
-                this.showNotification('✅ Parcela eliminada correctamente', 'success');
+                this.showNotification(t('msg.plot_deleted'), 'success');
             }
             
             if (result.error) {
@@ -1583,7 +1826,7 @@ class CementerioApp {
             
         } catch (error) {
             console.error('Error eliminando parcela:', error);
-            this.showNotification('❌ Error al eliminar la parcela: ' + error.message, 'error');
+            this.showNotification(t('err.del_plot_msg').replace('{n}', error.message), 'error');
         }
     }
 
@@ -1593,7 +1836,7 @@ class CementerioApp {
 
         form.querySelector('[name="nombre"]').value = difunto.nombre || '';
         form.querySelector('[name="apellidos"]').value = difunto.apellidos || '';
-        form.querySelector('[name="documento"]').value = difunto.cedula || '';
+        form.querySelector('[name="cedula"]').value = difunto.cedula || '';
         form.querySelector('[name="sexo"]').value = difunto.sexo || 'M';
         form.querySelector('[name="fecha_nacimiento"]').value = difunto.fecha_nacimiento || '';
         form.querySelector('[name="fecha_defuncion"]').value = difunto.fecha_defuncion || '';
@@ -1608,20 +1851,33 @@ class CementerioApp {
         form.dataset.editId = difunto.id;
     }
 
+    async populateParcelaSelects(selected = {}) {
+        const all = await window.electronAPI.getAllEtiquetas();
+        const byCategoria = { tipo: [], zona: [], ubicacion: [] };
+        if (Array.isArray(all)) {
+            all.forEach(e => { if (byCategoria[e.categoria]) byCategoria[e.categoria].push(e.valor); });
+        }
+
+        ['tipo', 'zona', 'ubicacion'].forEach(cat => {
+            const sel = document.querySelector(`#form-parcela [name="${cat}"]`);
+            if (!sel) return;
+            const current = sel.value || selected[cat] || '';
+            sel.innerHTML = `<option value="">${t('form.select_ph')}</option>` +
+                byCategoria[cat].map(v => `<option value="${v}"${v === current ? ' selected' : ''}>${v}</option>`).join('');
+        });
+    }
+
     populateParcelaForm(parcela) {
         const form = document.getElementById('form-parcela');
         if (!form) return;
 
         form.querySelector('[name="codigo"]').value = parcela.codigo || '';
-        form.querySelector('[name="tipo"]').value = parcela.tipo || '';
-        form.querySelector('[name="zona"]').value = parcela.zona || 'Nueva';
         form.querySelector('[name="seccion"]').value = parcela.seccion || '';
         form.querySelector('[name="fila"]').value = parcela.fila || '';
         form.querySelector('[name="numero"]').value = parcela.numero || '';
-        form.querySelector('[name="ubicacion"]').value = parcela.ubicacion || 'Centro';
         form.querySelector('[name="precio"]').value = parcela.precio || '';
         form.querySelector('[name="observaciones"]').value = parcela.observaciones || '';
-        
+
         form.dataset.editId = parcela.id;
     }
 
@@ -1647,15 +1903,21 @@ class CementerioApp {
     }
 
     showNotification(message, type = 'info') {
+        const icons = {
+            success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>',
+            error:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+            warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            info:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+        };
+        // Limpiar emojis residuales del mensaje
+        const cleanMsg = message.replace(/^[✅❌⚠️ℹ️🔔]+\s*/, '');
+
         const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.textContent = message;
-        
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `<span class="notif-icon">${icons[type] || icons.info}</span><span class="notif-text">${cleanMsg}</span>`;
+
         document.body.appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, 5000);
+        setTimeout(() => { notification.style.opacity = '0'; setTimeout(() => notification.remove(), 300); }, 4000);
     }
 
     debounce(func, wait) {
@@ -1684,15 +1946,15 @@ class CementerioApp {
                     `<button id="${btn.id}" class="btn ${btn.class}">${btn.text}</button>`
                 ).join('');
             } else {
-                buttonsHtml = `<button id="btn-ok" class="btn btn-primary">✅ Aceptar</button>`;
+                buttonsHtml = `<button id="btn-ok" class="btn btn-primary">Aceptar</button>`;
             }
 
             dialog.innerHTML = `
                 <div class="custom-dialog ${config.type === 'info' ? 'info-dialog' : ''}">
                     <div class="dialog-header ${config.headerClass || ''}">
                         <h3>${config.title}</h3>
-                        <button class="dialog-close-btn" id="dialog-close">×</button>
                     </div>
+                    <button class="dialog-close-btn" id="dialog-close">×</button>
                     <div class="dialog-content">
                         <div class="dialog-message">${config.message}</div>
                         <div class="dialog-buttons">
@@ -1703,6 +1965,8 @@ class CementerioApp {
             `;
 
             document.body.appendChild(dialog);
+
+            if (config.onMounted) config.onMounted(dialog);
 
             // Event listener para el botón de cerrar (X)
             dialog.querySelector('#dialog-close').addEventListener('click', () => {
@@ -1748,67 +2012,14 @@ class CementerioApp {
     }
 
     showBackupDialog() {
-        return new Promise((resolve) => {
-            // Crear un diálogo personalizado
-            const dialog = document.createElement('div');
-            dialog.className = 'custom-dialog-overlay';
-            dialog.innerHTML = `
-                <div class="custom-dialog">
-                    <div class="dialog-header">
-                        <h3>🗃️ Respaldar Base de Datos</h3>
-                    </div>
-                    <div class="dialog-content">
-                        <p>¿Dónde desea guardar el respaldo de la base de datos?</p>
-                        <div class="dialog-buttons">
-                            <button id="btn-custom-folder" class="btn btn-primary">
-                                📁 Seleccionar Carpeta
-                            </button>
-                            <button id="btn-default-folder" class="btn btn-secondary">
-                                🏠 Carpeta por Defecto
-                            </button>
-                            <button id="btn-cancel-backup" class="btn btn-danger">
-                                ❌ Cancelar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            document.body.appendChild(dialog);
-
-            // Agregar event listeners
-            dialog.querySelector('#btn-custom-folder').addEventListener('click', () => {
-                document.body.removeChild(dialog);
-                resolve('custom');
-            });
-
-            dialog.querySelector('#btn-default-folder').addEventListener('click', () => {
-                document.body.removeChild(dialog);
-                resolve('default');
-            });
-
-            dialog.querySelector('#btn-cancel-backup').addEventListener('click', () => {
-                document.body.removeChild(dialog);
-                resolve('cancel');
-            });
-
-            // Cerrar con Escape
-            const handleEscape = (e) => {
-                if (e.key === 'Escape') {
-                    document.body.removeChild(dialog);
-                    document.removeEventListener('keydown', handleEscape);
-                    resolve('cancel');
-                }
-            };
-            document.addEventListener('keydown', handleEscape);
-
-            // Cerrar al hacer clic fuera del diálogo
-            dialog.addEventListener('click', (e) => {
-                if (e.target === dialog) {
-                    document.body.removeChild(dialog);
-                    resolve('cancel');
-                }
-            });
+        return this.showCustomDialog({
+            title: t('cfg.backup_title'),
+            message: `<p style="margin:0;color:#64748b">${t('cfg.backup_where')}</p>`,
+            buttons: [
+                { id: 'btn-cancel',  class: 'btn-secondary', text: t('btn.cancel'),                                        value: 'cancel' },
+                { id: 'btn-default', class: 'btn-secondary',  text: t('cfg.backup') + ' (default)',                        value: 'default' },
+                { id: 'btn-custom',  class: 'btn-primary',    text: t('cfg.backup') + ' (' + t('btn.search') + '...)',     value: 'custom' }
+            ]
         });
     }
 
@@ -1818,7 +2029,7 @@ class CementerioApp {
             const userChoice = await this.showBackupDialog();
             
             if (userChoice === 'cancel') {
-                this.showNotification('Operación de respaldo cancelada', 'info');
+                this.showNotification(t('cfg.backup_cancelled'), 'info');
                 return;
             }
             
@@ -1833,7 +2044,7 @@ class CementerioApp {
                 }
                 
                 if (folderResult.canceled) {
-                    this.showNotification('Selección de carpeta cancelada', 'info');
+                    this.showNotification(t('cfg.folder_cancelled'), 'info');
                     return;
                 }
                 
@@ -1842,7 +2053,7 @@ class CementerioApp {
                 }
             }
             
-            this.showNotification('Iniciando respaldo de base de datos...', 'info');
+            this.showNotification(t('cfg.backup_starting'), 'info');
             
             const result = await window.electronAPI.backupDatabase(customPath);
             
@@ -1851,60 +2062,43 @@ class CementerioApp {
             }
             
             if (result.success) {
-                const locationText = result.customPath ? 
-                    'Ubicación personalizada' : 
-                    'Carpeta por defecto (backups/)';
-                
-                const message = `Respaldo creado exitosamente\n\n` +
-                              `Archivo: ${result.fileName}\n` +
-                              `Tamaño: ${result.size}\n` +
-                              `Ubicación: ${locationText}\n` +
-                              `Ruta completa: ${result.backupPath}\n` +
-                              `Fecha: ${result.date}`;
-                
-                this.showNotification('Respaldo completado exitosamente', 'success');
-                
+                const locationText = result.customPath ?
+                    t('cfg.backup_custom_loc') :
+                    t('cfg.backup_default_loc');
+
+                this.showNotification(t('cfg.backup_done'), 'success');
+
                 // Mostrar información detallada en diálogo personalizado
                 setTimeout(() => {
                     this.showCustomDialog({
-                        title: '🎉 Respaldo Exitoso',
+                        title: t('cfg.backup_done'),
                         message: `
-                            <div class="success-message">
-                                <div class="success-icon">✅</div>
-                                <h4>¡Respaldo creado exitosamente!</h4>
-                                <div class="backup-details">
-                                    <div class="detail-item">
-                                        <strong>📄 Archivo:</strong> ${result.fileName}
-                                    </div>
-                                    <div class="detail-item">
-                                        <strong>📊 Tamaño:</strong> ${result.size}
-                                    </div>
-                                    <div class="detail-item">
-                                        <strong>📍 Ubicación:</strong> ${locationText}
-                                    </div>
-                                    <div class="detail-item">
-                                        <strong>🗂️ Ruta completa:</strong> <code>${result.backupPath}</code>
-                                    </div>
-                                    <div class="detail-item">
-                                        <strong>🕒 Fecha:</strong> ${result.date}
-                                    </div>
+                            <div class="result-dialog">
+                                <div class="result-dialog-icon result-success">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="26" height="26"><polyline points="20 6 9 17 4 12"/></svg>
                                 </div>
-                            </div>
-                        `,
-                        headerClass: 'success-header',
+                                <div class="result-dialog-title">${t('cfg.backup_done')}</div>
+                                <div class="result-dialog-rows">
+                                    <div class="result-row"><span>${t('cfg.file')}</span><strong>${result.fileName}</strong></div>
+                                    <div class="result-row"><span>${t('cfg.size')}</span><strong>${result.size}</strong></div>
+                                    <div class="result-row"><span>${t('cfg.location')}</span><strong>${locationText}</strong></div>
+                                    <div class="result-row"><span>${t('cfg.date')}</span><strong>${result.date}</strong></div>
+                                </div>
+                                <div class="result-path"><code>${result.backupPath}</code></div>
+                            </div>`,
                         type: 'info'
                     });
                 }, 500);
             }
         } catch (error) {
             console.error('Error al crear respaldo:', error);
-            this.showNotification('Error al crear el respaldo: ' + error.message, 'error');
+            this.showNotification(t('err.backup').replace('{n}', error.message), 'error');
         }
     }
 
     async optimizeDatabase() {
         try {
-            this.showNotification('Optimizando base de datos...', 'info');
+            this.showNotification(t('cfg.optimizing'), 'info');
             
             const result = await window.electronAPI.optimizeDatabase();
             
@@ -1918,43 +2112,33 @@ class CementerioApp {
                               `Tiempo de ejecución: ${result.executionTime}\n` +
                               `Fecha: ${result.date}`;
                 
-                this.showNotification('Base de datos optimizada correctamente', 'success');
-                
+                this.showNotification(t('cfg.optimize_done'), 'success');
+
                 // Mostrar información detallada en diálogo personalizado
                 setTimeout(() => {
                     this.showCustomDialog({
-                        title: '⚡ Optimización Completada',
+                        title: t('cfg.optimize_done'),
                         message: `
-                            <div class="success-message">
-                                <div class="success-icon">🚀</div>
-                                <h4>¡Base de datos optimizada correctamente!</h4>
-                                <div class="optimization-details">
-                                    <div class="detail-item">
-                                        <strong>⏱️ Tiempo de ejecución:</strong> ${result.executionTime}
-                                    </div>
-                                    <div class="detail-item">
-                                        <strong>🔧 Operaciones realizadas:</strong>
-                                        <ul class="operations-list">
-                                            ${result.results.map(op => `<li>✓ ${op}</li>`).join('')}
-                                        </ul>
-                                    </div>
-                                    <div class="detail-item">
-                                        <strong>🕒 Fecha:</strong> ${result.date}
-                                    </div>
+                            <div class="result-dialog">
+                                <div class="result-dialog-icon result-success">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="26" height="26"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
                                 </div>
-                                <div class="optimization-benefits">
-                                    <small>💡 <strong>Beneficios:</strong> Mejor rendimiento, menor uso de espacio y consultas más rápidas.</small>
+                                <div class="result-dialog-title">${t('cfg.optimize_done')}</div>
+                                <div class="result-dialog-rows">
+                                    <div class="result-row"><span>${t('cfg.exec_time')}</span><strong>${result.executionTime}</strong></div>
+                                    <div class="result-row"><span>${t('cfg.date')}</span><strong>${result.date}</strong></div>
                                 </div>
-                            </div>
-                        `,
-                        headerClass: 'success-header',
+                                <div class="result-ops">
+                                    ${result.results.map(op => `<div class="result-op"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>${op}</div>`).join('')}
+                                </div>
+                            </div>`,
                         type: 'info'
                     });
                 }, 500);
             }
         } catch (error) {
             console.error('Error al optimizar:', error);
-            this.showNotification('Error al optimizar: ' + error.message, 'error');
+            this.showNotification(t('err.optimize').replace('{n}', error.message), 'error');
         }
     }
 
@@ -1962,181 +2146,289 @@ class CementerioApp {
         try {
             const theme = document.getElementById('theme-select').value;
             const recordsPerPage = document.getElementById('records-per-page').value;
-            
+
             // Guardar en localStorage
             localStorage.setItem('cementerio-theme', theme);
             localStorage.setItem('cementerio-records-per-page', recordsPerPage);
-            
-            this.showNotification('Preferencias guardadas correctamente', 'success');
-            
-            // Mostrar confirmación con diálogo personalizado
-            setTimeout(() => {
-                this.showCustomDialog({
-                    title: '💾 Preferencias Guardadas',
-                    message: `
-                        <div class="success-message">
-                            <div class="success-icon">✅</div>
-                            <h4>¡Preferencias guardadas exitosamente!</h4>
-                            <div class="preferences-details">
-                                <div class="detail-item">
-                                    <strong>🎨 Tema seleccionado:</strong> ${this.getThemeDisplayName(theme)}
-                                </div>
-                                <div class="detail-item">
-                                    <strong>📄 Registros por página:</strong> ${recordsPerPage}
-                                </div>
-                            </div>
-                            <div class="preferences-note">
-                                <small>💡 <strong>Nota:</strong> Los cambios se aplicarán en la próxima sesión o al recargar la aplicación.</small>
-                            </div>
-                        </div>
-                    `,
-                    headerClass: 'success-header',
-                    type: 'info'
-                });
-            }, 500);
+
+            // Aplicar tema inmediatamente
+            this.applyTheme(theme);
+
+            // Actualizar registros por página
+            this.registrosPorPagina = parseInt(recordsPerPage) || 50;
+
+            this.showNotification(t('cfg.prefs_saved'), 'success');
         } catch (error) {
-            this.showNotification('Error al guardar preferencias: ' + error.message, 'error');
+            this.showNotification(t('err.save_prefs').replace('{n}', error.message), 'error');
         }
     }
 
+    changeLanguage(lang) {
+        if (!window.i18n) return;
+        window.i18n.setLocale(lang);
+        this.showNotification(t('msg.lang_changed'), 'success');
+        // Re-render JS-generated content so translated values (status, badges) update immediately
+        this._rerenderCurrentSection();
+    }
+
+    _rerenderCurrentSection() {
+        const sec = this.currentSection;
+        // Always re-render recent activity (dashboard) since it's always loaded
+        this.updateRecentActivity(false);
+        if (sec === 'parcelas' && this.originalData.parcelas) {
+            this.renderParcelasTable(this.originalData.parcelas);
+            this.populateParcelasFilterSelects();
+        } else if (sec === 'difuntos' && this.originalData.difuntos) {
+            this.renderDifuntosTable(this.originalData.difuntos);
+        } else if (sec === 'busqueda' && this._lastSearchResults) {
+            this.renderSearchResults(this._lastSearchResults);
+        }
+    }
+
+    applyTheme(theme) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = theme === 'dark' || (theme === 'auto' && prefersDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    }
+
     getThemeDisplayName(theme) {
-        const themes = {
-            'light': '☀️ Claro',
-            'dark': '🌙 Oscuro',
-            'auto': '🔄 Automático'
-        };
+        const themes = { 'light': t('cfg.theme_light'), 'dark': t('cfg.theme_dark'), 'auto': t('cfg.theme_auto') };
         return themes[theme] || theme;
     }
 
     async resetPreferences() {
         const userChoice = await this.showCustomDialog({
-            title: '🔄 Restaurar Configuraciones',
-            message: `
-                <div class="warning-message">
-                    <div class="warning-icon">⚠️</div>
-                    <h4>¿Restaurar configuraciones predeterminadas?</h4>
-                    <p>Esta acción restaurará todas las preferencias a sus valores originales:</p>
-                    <div class="reset-details">
-                        <div class="detail-item">• <strong>Tema:</strong> Claro</div>
-                        <div class="detail-item">• <strong>Registros por página:</strong> 50</div>
-                    </div>
-                    <p><strong>Esta acción no se puede deshacer.</strong></p>
-                </div>
-            `,
-            headerClass: 'warning-header',
+            title: t('cfg.restore_title'),
+            message: `<p style="margin:0;color:#64748b">${t('cfg.restore_msg')}</p>`,
             buttons: [
-                { id: 'btn-confirm', class: 'btn-primary', text: '✅ Confirmar', value: 'confirm' },
-                { id: 'btn-cancel', class: 'btn-secondary', text: '❌ Cancelar', value: 'cancel' }
+                { id: 'btn-cancel',  class: 'btn-secondary', text: t('btn.cancel'),  value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-primary',    text: t('btn.restore'), value: 'confirm' }
             ]
         });
 
         if (userChoice === 'confirm') {
             try {
-                // Limpiar localStorage
                 localStorage.removeItem('cementerio-theme');
                 localStorage.removeItem('cementerio-records-per-page');
-                
-                // Restaurar valores predeterminados
                 document.getElementById('theme-select').value = 'light';
                 document.getElementById('records-per-page').value = '50';
-                
-                this.showNotification('Configuraciones restauradas a valores predeterminados', 'success');
-                
-                // Mostrar confirmación
-                setTimeout(() => {
-                    this.showCustomDialog({
-                        title: '🔄 Configuraciones Restauradas',
-                        message: `
-                            <div class="success-message">
-                                <div class="success-icon">✅</div>
-                                <h4>¡Configuraciones restauradas exitosamente!</h4>
-                                <p>Todas las preferencias han sido restablecidas a sus valores predeterminados.</p>
-                                <div class="reset-confirmation">
-                                    <div class="detail-item">✓ <strong>Tema:</strong> ☀️ Claro</div>
-                                    <div class="detail-item">✓ <strong>Registros por página:</strong> 50</div>
-                                </div>
-                            </div>
-                        `,
-                        headerClass: 'success-header',
-                        type: 'info'
-                    });
-                }, 500);
+                this.applyTheme('light');
+                this.registrosPorPagina = 50;
+                this.showNotification(t('cfg.restore_done'), 'success');
             } catch (error) {
-                this.showNotification('Error al restaurar configuraciones: ' + error.message, 'error');
+                this.showNotification(t('err.restore_cfg').replace('{n}', error.message), 'error');
             }
         }
     }
 
+    // ── ETIQUETAS ─────────────────────────────────────────────────────────────
+    async loadEtiquetas() {
+        const categorias = ['tipo', 'zona', 'ubicacion'];
+        for (const cat of categorias) {
+            const items = await window.electronAPI.getEtiquetas(cat);
+            this.renderEtiquetas(cat, items || []);
+        }
+    }
+
+    renderEtiquetas(categoria, items) {
+        const list = document.getElementById('list-' + categoria);
+        if (!list) return;
+        if (!items.length) {
+            list.innerHTML = `<p class="etiqueta-empty">${t('etq.empty')}</p>`;
+            return;
+        }
+        list.innerHTML = items.map(item => `
+            <div class="etiqueta-item" data-id="${item.id}">
+                <span class="etiqueta-valor">${item.valor}</span>
+                <div class="etiqueta-actions">
+                    <button class="etiqueta-btn etiqueta-btn-edit" onclick="app.editEtiqueta(${item.id}, '${categoria}', '${item.valor.replace(/'/g, "\\'")}')" title="${t('btn.edit')}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="etiqueta-btn etiqueta-btn-delete" onclick="app.deleteEtiqueta(${item.id}, '${categoria}', '${item.valor.replace(/'/g, "\\'")}')" title="${t('btn.delete')}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async addEtiqueta(categoria) {
+        const nombres = { tipo: t('etq.plot_type'), zona: t('etq.zones'), ubicacion: t('etq.location') };
+        let capturedVal = '';
+        const result = await this.showCustomDialog({
+            title: t('etq.new_label') + ' — ' + nombres[categoria],
+            message: `
+                <div class="form-group" style="margin:0">
+                    <label>${t('etq.name')}</label>
+                    <input type="text" id="etiq-input" placeholder="${t('etq.new_ph')}" style="margin-top:6px">
+                </div>`,
+            buttons: [
+                { id: 'btn-cancel', class: 'btn-secondary', text: t('btn.cancel'),    value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-primary',   text: t('btn.add_label'), value: 'confirm' }
+            ],
+            onMounted: (dialog) => {
+                const inp = dialog.querySelector('#etiq-input');
+                if (inp) {
+                    inp.focus();
+                    inp.addEventListener('input', () => { capturedVal = inp.value; });
+                    dialog.querySelector('#btn-confirm').addEventListener('click', () => { capturedVal = inp.value; }, true);
+                }
+            }
+        });
+        if (result !== 'confirm') return;
+        const val = capturedVal.trim();
+        if (!val) { this.showNotification(t('etq.empty_name'), 'error'); return; }
+
+        // Comprobar duplicado antes de insertar
+        const existentes = await window.electronAPI.getEtiquetas(categoria);
+        const yaExiste = existentes.some(e => e.valor.toLowerCase() === val.toLowerCase());
+        if (yaExiste) { this.showNotification(`"${val}" ${t('etq.dup_error')}`, 'error'); return; }
+
+        await window.electronAPI.createEtiqueta({ categoria, valor: val });
+        await this.loadEtiquetas();
+        await this.populateParcelasFilterSelects();
+        this.showNotification(t('etq.added'), 'success');
+    }
+
+    async editEtiqueta(id, categoria, valorActual) {
+        let capturedVal = valorActual;
+        const result = await this.showCustomDialog({
+            title: t('etq.edit_label'),
+            message: `
+                <div class="form-group" style="margin:0">
+                    <label>${t('etq.name')}</label>
+                    <input type="text" id="etiq-edit-input" value="${valorActual}" style="margin-top:6px">
+                </div>`,
+            buttons: [
+                { id: 'btn-cancel', class: 'btn-secondary', text: t('btn.cancel'), value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-primary',   text: t('btn.save'),   value: 'confirm' }
+            ],
+            onMounted: (dialog) => {
+                const inp = dialog.querySelector('#etiq-edit-input');
+                if (inp) {
+                    inp.focus();
+                    inp.select();
+                    inp.addEventListener('input', () => { capturedVal = inp.value; });
+                    dialog.querySelector('#btn-confirm').addEventListener('click', () => { capturedVal = inp.value; }, true);
+                }
+            }
+        });
+        if (result !== 'confirm') return;
+        const val = capturedVal.trim();
+        if (!val) return;
+        if (val === valorActual) { this.showNotification(t('etq.no_changes'), 'info'); return; }
+
+        // Comprobar duplicado
+        const existentes = await window.electronAPI.getEtiquetas(categoria);
+        const yaExiste = existentes.some(e => e.id !== id && e.valor.toLowerCase() === val.toLowerCase());
+        if (yaExiste) { this.showNotification(`"${val}" ${t('etq.dup_error')}`, 'error'); return; }
+
+        // Advertir si hay parcelas usando el valor actual
+        const enUso = parseInt(await window.electronAPI.countParcelasByEtiqueta(categoria, valorActual)) || 0;
+        if (enUso > 0) {
+            const inUseMsg = enUso === 1
+                ? `<strong>1</strong> ${t('etq.in_use_edit_msg').replace('{v}', valorActual)}`
+                : `<strong>${enUso}</strong> ${t('etq.in_use_edit_msg_pl').replace('{v}', valorActual)}`;
+            const aviso = await this.showCustomDialog({
+                title: t('etq.in_use'),
+                message: `<p style="margin:0;color:#64748b">${inUseMsg}</p>`,
+                buttons: [
+                    { id: 'btn-cancel', class: 'btn-secondary', text: t('btn.cancel'), value: 'cancel' },
+                    { id: 'btn-confirm', class: 'btn-primary',   text: t('btn.save'),   value: 'confirm' }
+                ]
+            });
+            if (aviso !== 'confirm') return;
+        }
+
+        await window.electronAPI.updateEtiqueta(id, { valor: val });
+        await this.loadEtiquetas();
+        await this.populateParcelasFilterSelects();
+        this.showNotification(t('etq.updated'), 'success');
+    }
+
+    async deleteEtiqueta(id, categoria, valor) {
+        // Advertir si hay parcelas usando esta etiqueta
+        const enUso = valor ? parseInt(await window.electronAPI.countParcelasByEtiqueta(categoria, valor)) || 0 : 0;
+
+        const msg = enUso > 0
+            ? `<p style="margin:0;color:#64748b"><strong>${enUso}</strong> ${enUso === 1 ? t('etq.in_use_del_msg') : t('etq.in_use_del_msg_pl').replace('{n}', enUso)}</p>`
+            : `<p style="margin:0;color:#64748b">${t('etq.del_safe')}</p>`;
+
+        const confirmed = await this.showCustomDialog({
+            title: t('etq.del_label'),
+            message: msg,
+            buttons: [
+                { id: 'btn-cancel', class: 'btn-secondary',     text: t('btn.cancel'), value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-danger-modern', text: t('btn.delete'), value: 'confirm' }
+            ]
+        });
+        if (confirmed !== 'confirm') return;
+        await window.electronAPI.deleteEtiqueta(id);
+        await this.loadEtiquetas();
+        await this.populateParcelasFilterSelects();
+        this.showNotification(t('etq.deleted'), 'success');
+    }
+
     showAbout() {
         this.showCustomDialog({
-            title: '🏛️ Acerca del Sistema',
+            title: t('cfg.about') + ' Memorix',
             message: `
                 <div class="about-dialog">
-                    <div class="app-info">
-                        <h2>🏛️ Sistema de Gestión de Cementerio</h2>
-                        <div class="version-info">
-                            <span class="version-badge">v1.0.0</span>
-                            <span class="tech-stack">Electron + Node.js + SQLite</span>
+                    <div class="about-hero">
+                        <div class="about-logo-wrap">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="28" height="28"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <div>
+                            <div class="about-name">Memorix</div>
+                            <div class="about-tagline">${t('app.tagline')}</div>
+                        </div>
+                        <span class="about-version">v1.0.0</span>
+                    </div>
+
+                    <div class="about-stack">
+                        <span class="about-tech">Electron</span>
+                        <span class="about-tech">Node.js</span>
+                        <span class="about-tech">SQLite</span>
+                    </div>
+
+                    <div class="about-section-title">${t('about.developer')}</div>
+                    <div class="about-dev">
+                        <div class="about-dev-avatar">AP</div>
+                        <div>
+                            <div class="about-dev-name">Alejandro Pastor Mayor</div>
+                            <div class="about-dev-role">${t('about.dev_role')}</div>
                         </div>
                     </div>
-                    
-                    <div class="developer-info">
-                        <h3>👨‍💻 Información del Desarrollador</h3>
-                        <div class="developer-card">
-                            <div class="developer-name">
-                                <strong>Alejandro Pastor Mayor</strong>
-                            </div>
-                            <div class="contact-info">
-                                <div class="contact-item">
-                                    <span class="contact-icon">📞</span>
-                                    <span>683 132 931</span>
-                                </div>
-                                <div class="contact-item">
-                                    <span class="contact-icon">🇪🇸</span>
-                                    <span>España</span>
-                                </div>
-                                <div class="contact-item">
-                                    <span class="contact-icon">📧</span>
-                                    <span>Desarrollador de Software</span>
-                                </div>
-                            </div>
+
+                    <div class="about-section-title">${t('about.features')}</div>
+                    <div class="about-features">
+                        <div class="about-feat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            ${t('about.feat_deceased')}
+                        </div>
+                        <div class="about-feat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            ${t('about.feat_plots')}
+                        </div>
+                        <div class="about-feat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                            ${t('about.feat_search')}
+                        </div>
+                        <div class="about-feat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            ${t('about.feat_backup')}
+                        </div>
+                        <div class="about-feat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                            ${t('about.feat_reports')}
+                        </div>
+                        <div class="about-feat">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            ${t('about.feat_family')}
                         </div>
                     </div>
-                    
-                    <div class="features-info">
-                        <h3>⚡ Funcionalidades Principales</h3>
-                        <div class="features-grid">
-                            <div class="feature-item">
-                                <span class="feature-icon">👥</span>
-                                <span>Gestión de Difuntos</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-icon">🏞️</span>
-                                <span>Administración de Parcelas</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-icon">🔍</span>
-                                <span>Búsqueda Avanzada</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-icon">💾</span>
-                                <span>Respaldo de Datos</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-icon">⚡</span>
-                                <span>Optimización de BD</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feature-icon">📊</span>
-                                <span>Reportes y Estadísticas</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="copyright-info">
-                        <p>© 2025 Alejandro Pastor Mayor. Todos los derechos reservados.</p>
-                        <p class="description">Sistema integral para la administración profesional de cementerios y registro de difuntos.</p>
-                    </div>
+
+                    <div class="about-copyright">© 2025 Alejandro Pastor Mayor · ${t('about.rights')}</div>
                 </div>
             `,
             headerClass: 'about-header',
@@ -2150,7 +2442,7 @@ class CementerioApp {
             if (this.currentSection === 'configuracion') {
                 document.getElementById('app-version').textContent = '1.0.0';
                 document.getElementById('platform').textContent = navigator.platform;
-                document.getElementById('electron-version').textContent = 'Cargando...';
+                document.getElementById('electron-version').textContent = window.electronAPI.getElectronVersion() || 'N/A';
                 
                 // Obtener tamaño real de la base de datos
                 try {
@@ -2176,35 +2468,1029 @@ class CementerioApp {
                 }
                 
                 // Cargar preferencias guardadas
-                const savedTheme = localStorage.getItem('cementerio-theme') || 'light';
-                const savedRecordsPerPage = localStorage.getItem('cementerio-records-per-page') || '50';
+                const validThemes = ['light', 'dark', 'auto'];
+                const validRecords = ['25', '50', '100'];
+                const rawTheme = localStorage.getItem('cementerio-theme');
+                const rawRecords = localStorage.getItem('cementerio-records-per-page');
+                const savedTheme = validThemes.includes(rawTheme) ? rawTheme : 'light';
+                const savedRecordsPerPage = validRecords.includes(rawRecords) ? rawRecords : '50';
                 
                 document.getElementById('theme-select').value = savedTheme;
                 document.getElementById('records-per-page').value = savedRecordsPerPage;
+                const langSelect = document.getElementById('lang-select');
+                if (langSelect) langSelect.value = window.i18n?.locale || 'es';
+                this.registrosPorPagina = parseInt(savedRecordsPerPage) || 50;
+
+                // Cargar info de organización
+                const org = this.getOrgInfo();
+                const orgNombre = document.getElementById('org-nombre');
+                const orgDir = document.getElementById('org-direccion');
+                const orgTel = document.getElementById('org-telefono');
+                if (orgNombre) orgNombre.value = org.nombre === 'Memorix' ? '' : org.nombre;
+                if (orgDir) orgDir.value = org.direccion;
+                if (orgTel) orgTel.value = org.telefono;
+
+                // Cargar info de licencia
+                this.loadLicenseInfo();
             }
         } catch (error) {
             console.error('Error cargando información de configuración:', error);
         }
     }
+
+    async loadLicenseInfo() {
+        const el = document.getElementById('license-info-block');
+        if (!el || !window.electronAPI.licenseInfo) return;
+        const lic = await window.electronAPI.licenseInfo();
+        if (!lic) {
+            el.innerHTML = `<span style="color:var(--text-muted)">Sin licencia activa</span>`;
+            return;
+        }
+        const exp = lic.expiresAt ? new Date(lic.expiresAt).toLocaleDateString() : '—';
+        const now = Date.now();
+        const daysLeft = lic.expiresAt ? Math.ceil((lic.expiresAt - now) / 86400000) : null;
+        const color = daysLeft !== null && daysLeft <= 14 ? '#f59e0b' : '#22c55e';
+        el.innerHTML = `
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">Licencia activa</div>
+            <div style="font-size:13px;color:var(--text);margin-bottom:2px">${lic.email || '—'}</div>
+            ${daysLeft !== null ? `<div style="font-size:12px;color:${color}">Expira: ${exp} (${daysLeft} días)</div>` : ''}
+            <button onclick="app.deactivateLicense()" style="margin-top:10px;font-size:11px;background:none;border:1px solid var(--border);color:var(--text-muted);border-radius:6px;padding:4px 10px;cursor:pointer">Desactivar licencia</button>
+        `;
+    }
+
+    async deactivateLicense() {
+        const ok = await this.showCustomDialog({
+            title: 'Desactivar licencia',
+            message: '<p style="color:#64748b;margin:0">Esto eliminará la licencia de este dispositivo. Necesitarás tu clave para volver a activarla.</p>',
+            buttons: [
+                { id: 'btn-cancel',  class: 'btn-secondary', text: 'Cancelar',   value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-danger',    text: 'Desactivar', value: 'confirm' }
+            ]
+        });
+        if (ok !== 'confirm') return;
+        await window.electronAPI.licenseDeactivate();
+        this.showNotification('Licencia desactivada. La app se cerrará.', 'info');
+        setTimeout(() => window.electronAPI && window.close(), 2000);
+    }
+
+    // ── LOGIN ─────────────────────────────────────────────────────────────────
+    async initLogin() {
+        try {
+            const hasPass = await window.electronAPI.hasPassword();
+            if (!hasPass) await window.electronAPI.setPassword('1234');
+        } catch(e) {}
+
+        const overlay = document.getElementById('login-overlay');
+        if (!overlay) return;
+        overlay.style.display = 'flex';
+
+        const form = document.getElementById('login-form');
+        if (!form) return;
+
+        // Remove any previous listener by cloning
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+
+        newForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pwdInput = document.getElementById('login-password');
+            const pwd = pwdInput ? pwdInput.value : '';
+            let ok = false;
+            try { ok = await window.electronAPI.checkPassword(pwd); } catch(err) { console.error('[LOGIN] checkPassword error:', err); }
+            if (ok) {
+                overlay.style.transition = 'opacity 0.3s';
+                overlay.style.opacity = '0';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    overlay.style.opacity = '';
+                    this.checkOnboarding();
+                }, 300);
+            } else {
+                const err = document.getElementById('login-error');
+                if (err) err.style.display = 'block';
+                if (pwdInput) { pwdInput.value = ''; pwdInput.focus(); }
+            }
+        });
+    }
+
+    async cambiarContrasena() {
+        let vals = { actual: '', nueva: '', confirmar: '' };
+
+        const result = await this.showCustomDialog({
+            title: t('cfg.change_pwd'),
+            message: `
+                <div class="pwd-form">
+                    <div class="pwd-form-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="28" height="28"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <p class="pwd-form-desc">${t('pwd.desc')}</p>
+                    <div class="form-group">
+                        <label>${t('pwd.current')}</label>
+                        <input type="password" id="pwd-actual" placeholder="••••••••" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label>${t('pwd.new')}</label>
+                        <input type="password" id="pwd-nueva" placeholder="${t('pwd.new_ph')}" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label>${t('pwd.confirm')}</label>
+                        <input type="password" id="pwd-confirmar" placeholder="${t('pwd.confirm_ph')}" autocomplete="new-password">
+                    </div>
+                </div>`,
+            buttons: [
+                { id: 'btn-cancel', class: 'btn-secondary', text: t('btn.cancel'), value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-primary',   text: t('cfg.save'),   value: 'confirm' }
+            ],
+            onMounted: (dialog) => {
+                const inp = (id) => dialog.querySelector('#' + id);
+                ['pwd-actual', 'pwd-nueva', 'pwd-confirmar'].forEach(id => {
+                    inp(id)?.addEventListener('input', () => { vals[id.replace('pwd-', '')] = inp(id).value; });
+                });
+                inp('pwd-actual')?.focus();
+                dialog.querySelector('#btn-confirm').addEventListener('click', () => {
+                    vals.actual    = inp('pwd-actual')?.value    || '';
+                    vals.nueva     = inp('pwd-nueva')?.value     || '';
+                    vals.confirmar = inp('pwd-confirmar')?.value || '';
+                }, true);
+            }
+        });
+
+        if (result !== 'confirm') return;
+
+        const ok = await window.electronAPI.checkPassword(vals.actual);
+        if (!ok) { this.showNotification(t('pwd.wrong_current'), 'error'); return; }
+        if (vals.nueva.length < 4) { this.showNotification(t('pwd.too_short'), 'error'); return; }
+        if (vals.nueva !== vals.confirmar) { this.showNotification(t('pwd.no_match'), 'error'); return; }
+
+        await window.electronAPI.setPassword(vals.nueva);
+        this.showNotification(t('pwd.changed_ok'), 'success');
+    }
+
+    // ── FAMILIARES ────────────────────────────────────────────────────────────
+    async abrirFamiliares(difuntoId, nombre) {
+        this.currentFamiliarDifuntoId = difuntoId;
+        document.getElementById('familiares-difunto-nombre').textContent = nombre;
+        document.getElementById('form-familiar-container').style.display = 'none';
+        const modal = document.getElementById('modal-familiares');
+        modal.style.display = 'flex';
+        await this.cargarFamiliares();
+        
+    }
+
+    async cargarFamiliares() {
+        const lista = document.getElementById('familiares-lista');
+        lista.innerHTML = `<p>${t('msg.loading')}</p>`;
+        const familiares = await window.electronAPI.getFamiliares(this.currentFamiliarDifuntoId);
+        if (!familiares || familiares.length === 0) {
+            lista.innerHTML = `<p class="text-muted">${t('msg.no_familiares')}</p>`;
+            return;
+        }
+        lista.innerHTML = familiares.map(f => `
+            <div class="familiar-item">
+                <div class="familiar-info">
+                    <strong>${f.nombre} ${f.apellidos}</strong>
+                    <span class="badge badge-relacion">${f.relacion}</span>
+                    ${f.es_responsable ? '<span class="badge badge-responsable">Responsable</span>' : ''}
+                    <div class="familiar-contacto">
+                        ${f.telefono ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.59a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> ${f.telefono}</span>` : ''}
+                        ${f.email ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> ${f.email}</span>` : ''}
+                        ${f.cedula ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> ${f.cedula}</span>` : ''}
+                    </div>
+                </div>
+                <div class="familiar-acciones">
+                    <button class="btn-icon btn-icon-edit" onclick="app.editarFamiliar(${f.id})" title="${t('btn.edit')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                    <button class="btn-icon btn-icon-delete" onclick="app.eliminarFamiliar(${f.id})" title="${t('btn.delete')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    abrirFormFamiliar(id = null) {
+        document.getElementById('form-familiar-container').style.display = 'block';
+        document.getElementById('form-familiar-titulo').textContent = id ? t('fam.edit') : t('fam.new');
+        document.getElementById('familiar-id').value = id || '';
+        if (!id) document.getElementById('form-familiar').reset();
+        document.getElementById('form-familiar').onsubmit = (e) => { e.preventDefault(); this.guardarFamiliar(); };
+    }
+
+    cancelarFormFamiliar() {
+        document.getElementById('form-familiar-container').style.display = 'none';
+    }
+
+    async editarFamiliar(id) {
+        const fams = await window.electronAPI.getFamiliares(this.currentFamiliarDifuntoId);
+        const f = fams.find(x => x.id === id);
+        if (!f) return;
+        this.abrirFormFamiliar(id);
+        document.getElementById('fam-nombre').value = f.nombre || '';
+        document.getElementById('fam-apellidos').value = f.apellidos || '';
+        document.getElementById('fam-relacion').value = f.relacion || '';
+        document.getElementById('fam-telefono').value = f.telefono || '';
+        document.getElementById('fam-email').value = f.email || '';
+        document.getElementById('fam-cedula').value = f.cedula || '';
+        document.getElementById('fam-direccion').value = f.direccion || '';
+        document.getElementById('fam-responsable').checked = !!f.es_responsable;
+    }
+
+    async guardarFamiliar() {
+        // Validación
+        const isValid = this.validateForm([
+            { el: document.getElementById('fam-nombre'),    rules: { required: true, minLength: 2 } },
+            { el: document.getElementById('fam-apellidos'), rules: { required: true, minLength: 2 } },
+            { el: document.getElementById('fam-relacion'),  rules: { required: true } },
+        ]);
+        if (!isValid) return;
+
+        const id = document.getElementById('familiar-id').value;
+        const data = {
+            difunto_id: this.currentFamiliarDifuntoId,
+            nombre: document.getElementById('fam-nombre').value.trim(),
+            apellidos: document.getElementById('fam-apellidos').value.trim(),
+            relacion: document.getElementById('fam-relacion').value,
+            telefono: document.getElementById('fam-telefono').value.trim(),
+            email: document.getElementById('fam-email').value.trim(),
+            cedula: document.getElementById('fam-cedula').value.trim(),
+            direccion: document.getElementById('fam-direccion').value.trim(),
+            es_responsable: document.getElementById('fam-responsable').checked
+        };
+        if (id) {
+            await window.electronAPI.updateFamiliar(parseInt(id), data);
+            this.showNotification(t('msg.fam_updated'), 'success');
+        } else {
+            await window.electronAPI.createFamiliar(data);
+            this.showNotification(t('fam.added'), 'success');
+        }
+        document.getElementById('form-familiar-container').style.display = 'none';
+        await this.cargarFamiliares();
+    }
+
+    async eliminarFamiliar(id) {
+        const result = await this.showCustomDialog({
+            title: t('fam.del_title'),
+            message: `<p style="margin:0;color:#64748b">${t('fam.del_msg')}</p>`,
+            buttons: [
+                { id: 'btn-cancel',  class: 'btn-secondary',    text: t('btn.cancel'), value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-danger-modern', text: t('btn.delete'), value: 'confirm' }
+            ]
+        });
+        if (result !== 'confirm') return;
+        await window.electronAPI.deleteFamiliar(id);
+        this.showNotification(t('fam.del_done'), 'success');
+        await this.cargarFamiliares();
+    }
+
+    // ── PAGOS ─────────────────────────────────────────────────────────────────
+    async abrirPagos(difuntoId, nombre) {
+        this.currentPagoDifuntoId = difuntoId;
+        document.getElementById('pagos-difunto-nombre').textContent = nombre;
+        document.getElementById('form-pago-container').style.display = 'none';
+        const modal = document.getElementById('modal-pagos');
+        modal.style.display = 'flex';
+        await this.cargarPagos();
+        
+    }
+
+    async cargarPagos() {
+        const lista = document.getElementById('pagos-lista');
+        const totalDiv = document.getElementById('pagos-total');
+        lista.innerHTML = `<p>${t('msg.loading')}</p>`;
+        const [pagos, total] = await Promise.all([
+            window.electronAPI.getPagos(this.currentPagoDifuntoId),
+            window.electronAPI.getTotalPagado(this.currentPagoDifuntoId)
+        ]);
+        totalDiv.innerHTML = `<div class="pagos-resumen">${t('pag.total_collected')}: <strong>${this.formatMoney(total)}</strong></div>`;
+        if (!pagos || pagos.length === 0) {
+            lista.innerHTML = `<p class="text-muted">${t('msg.no_pagos')}</p>`;
+            return;
+        }
+        const metodoIcon = {
+            efectivo:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+            transferencia: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+            tarjeta:       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>',
+            cheque:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+        };
+        lista.innerHTML = `
+            <table class="pagos-tabla">
+                <thead><tr><th>${t('th.birthdate')}</th><th>${t('pag.method','Método')}</th><th>${t('pag.concept','Concepto')}</th><th>${t('pag.amount','Importe')}</th><th></th></tr></thead>
+                <tbody>` + pagos.map(p => `
+                    <tr>
+                        <td>${this.formatDate(p.fecha_pago)}</td>
+                        <td><span class="metodo-pago-cell">${metodoIcon[p.metodo_pago] || ''} ${p.metodo_pago}</span></td>
+                        <td class="text-muted">${p.concepto || p.referencia || '—'}</td>
+                        <td class="pago-importe">${this.formatMoney(p.monto)}</td>
+                        <td><button class="btn-icon btn-icon-delete" onclick="app.eliminarPago(${p.id})" title="${t('btn.delete')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button></td>
+                    </tr>
+                `).join('') + `</tbody>
+            </table>`;
+    }
+
+    abrirFormPago() {
+        document.getElementById('form-pago-container').style.display = 'block';
+        document.getElementById('pago-fecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('form-pago').onsubmit = (e) => { e.preventDefault(); this.guardarPago(); };
+    }
+
+    cancelarFormPago() {
+        document.getElementById('form-pago-container').style.display = 'none';
+    }
+
+    async guardarPago() {
+        const monto = parseFloat(document.getElementById('pago-monto').value);
+        if (!monto || monto <= 0) { this.showNotification(t('pay.invalid_amount'), 'error'); return; }
+        const data = {
+            difunto_id: this.currentPagoDifuntoId,
+            monto,
+            fecha_pago: document.getElementById('pago-fecha').value,
+            metodo_pago: document.getElementById('pago-metodo').value,
+            referencia: document.getElementById('pago-referencia').value.trim(),
+            concepto: document.getElementById('pago-concepto').value.trim()
+        };
+        await window.electronAPI.createPago(data);
+        this.showNotification(t('pay.saved'), 'success');
+        document.getElementById('form-pago-container').style.display = 'none';
+        document.getElementById('form-pago').reset();
+        await this.cargarPagos();
+    }
+
+    async eliminarPago(id) {
+        const result = await this.showCustomDialog({
+            title: t('pay.del_title'),
+            message: `<p style="margin:0;color:#64748b">${t('pay.del_msg')}</p>`,
+            buttons: [
+                { id: 'btn-cancel',  class: 'btn-secondary',    text: t('btn.cancel'), value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-danger-modern', text: t('btn.delete'), value: 'confirm' }
+            ]
+        });
+        if (result !== 'confirm') return;
+        await window.electronAPI.deletePago(id);
+        this.showNotification(t('pay.del_done'), 'success');
+        await this.cargarPagos();
+    }
+
+    // ── REPORTES ──────────────────────────────────────────────────────────────
+    getOrgInfo() {
+        return {
+            nombre: localStorage.getItem('org-nombre') || 'Memorix',
+            direccion: localStorage.getItem('org-direccion') || '',
+            telefono: localStorage.getItem('org-telefono') || ''
+        };
+    }
+
+    saveOrgInfo() {
+        const nombre = document.getElementById('org-nombre')?.value.trim();
+        const direccion = document.getElementById('org-direccion')?.value.trim();
+        const telefono = document.getElementById('org-telefono')?.value.trim();
+        if (nombre !== undefined) localStorage.setItem('org-nombre', nombre);
+        if (direccion !== undefined) localStorage.setItem('org-direccion', direccion);
+        if (telefono !== undefined) localStorage.setItem('org-telefono', telefono);
+        this.showNotification(t('msg.org_saved'), 'success');
+    }
+
+    buildPDFHeader(org, titulo, totalReg, fecha) {
+        const orgLines = [
+            org.direccion ? `<div class="pdf-org-sub">${org.direccion}</div>` : '',
+            org.telefono  ? `<div class="pdf-org-sub">${org.telefono}</div>`  : ''
+        ].join('');
+        const logoSvg = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
+        return `
+        <div class="pdf-header">
+            <div class="pdf-header-left">
+                <div class="pdf-logo-circle">${logoSvg}</div>
+                <div>
+                    <div class="pdf-org-name">${org.nombre || 'Memorix'}</div>
+                    ${orgLines}
+                </div>
+            </div>
+            <div class="pdf-header-right">
+                <div class="pdf-doc-title">${titulo}</div>
+                <div class="pdf-doc-meta">${t('rep.issued')}: ${fecha}</div>
+                <div class="pdf-doc-meta">${totalReg} ${t('pag.records')}</div>
+            </div>
+        </div>
+        <div class="pdf-divider"></div>`;
+    }
+
+    async generarReporte(tipo) {
+        const preview = document.getElementById('reporte-preview');
+        const contenido = document.getElementById('reporte-contenido');
+        const titulo = document.getElementById('reporte-titulo');
+        const locale = window.i18n.locale === 'en' ? 'en-GB' : 'es-ES';
+        const fecha = new Date().toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
+        contenido.innerHTML = `<p style="padding:16px;color:#64748b">${t('msg.loading')}</p>`;
+        preview.style.display = 'block';
+        preview.scrollIntoView({ behavior: 'smooth' });
+        try {
+            if (tipo === 'difuntos') {
+                titulo.textContent = t('rep.deceased_list_title');
+                const difuntos = await window.electronAPI.getDifuntos({ limit: 9999 });
+                contenido.innerHTML = this.buildReporteDifuntos(difuntos, fecha);
+            } else if (tipo === 'parcelas') {
+                titulo.textContent = t('rep.plots_list_title');
+                const parcelas = await window.electronAPI.getParcelas();
+                contenido.innerHTML = this.buildReporteParcelas(parcelas, fecha, false);
+            } else if (tipo === 'disponibles') {
+                titulo.textContent = t('rep.avail_plots_title');
+                const parcelas = await window.electronAPI.getParcelasDisponibles();
+                contenido.innerHTML = this.buildReporteParcelas(parcelas, fecha, true);
+            } else if (tipo === 'pagos') {
+                titulo.textContent = t('rep.payments_title');
+                const pagos = await window.electronAPI.getAllPagos();
+                contenido.innerHTML = this.buildReportePagos(pagos, fecha);
+            }
+        } catch (e) {
+            contenido.innerHTML = '<p style="padding:16px;color:#ef4444">Error generando el reporte: ' + e.message + '</p>';
+        }
+    }
+
+    buildReporteDifuntos(difuntos, fecha) {
+        const org = this.getOrgInfo();
+        const filas = difuntos.map((d, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${d.nombre} ${d.apellidos}</strong></td>
+                <td>${d.cedula || '-'}</td>
+                <td>${this.formatDate(d.fecha_nacimiento)}</td>
+                <td>${this.formatDate(d.fecha_defuncion)}</td>
+                <td>${d.parcela_codigo ? `<span class="pdf-chip">${this.shortParcelaCode(d.parcela_codigo)}</span>` : `<span style="color:#94a3b8">${t('msg.sin_asignar')}</span>`}</td>
+                <td><span class="pdf-badge pdf-badge-${d.estado}">${this.translateStatus(d.estado)}</span></td>
+            </tr>`).join('');
+        return `<div class="reporte-doc">
+            ${this.buildPDFHeader(org, t('rep.deceased_list_title'), difuntos.length, fecha)}
+            <table class="reporte-tabla">
+                <thead><tr><th>#</th><th>${t('th.full_name')}</th><th>${t('dec.document')}</th><th>${t('th.birthdate')}</th><th>${t('th.deathdate')}</th><th>${t('dec.plot')}</th><th>${t('dec.status')}</th></tr></thead>
+                <tbody>${filas || `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">${t('msg.no_results')}</td></tr>`}</tbody>
+            </table>
+        </div>`;
+    }
+
+    buildReporteParcelas(parcelas, fecha, soloDisponibles) {
+        const org = this.getOrgInfo();
+        const titulo = soloDisponibles ? t('rep.avail_plots_title') : t('rep.plots_list_title');
+        const filas = parcelas.map((p, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${this.shortParcelaCode(p.codigo)}</strong></td>
+                <td>${p.tipo}</td>
+                <td>${p.zona}</td>
+                <td>${p.seccion}-${p.numero}</td>
+                <td>${p.ubicacion}</td>
+                <td><span class="pdf-badge pdf-badge-${p.estado}">${this.translateStatus(p.estado)}</span></td>
+                <td>${p.precio ? parseFloat(p.precio).toFixed(2) + ' €' : '-'}</td>
+            </tr>`).join('');
+        return `<div class="reporte-doc">
+            ${this.buildPDFHeader(org, titulo, parcelas.length, fecha)}
+            <table class="reporte-tabla">
+                <thead><tr><th>#</th><th>${t('plot.code')}</th><th>${t('plot.type')}</th><th>${t('plot.zone')}</th><th>${t('plot.section')}</th><th>${t('plot.location')}</th><th>${t('plot.status')}</th><th>${t('plot.price')}</th></tr></thead>
+                <tbody>${filas || `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px">${t('msg.no_results')}</td></tr>`}</tbody>
+            </table>
+        </div>`;
+    }
+
+    buildReportePagos(pagos, fecha) {
+        const org = this.getOrgInfo();
+        const total = pagos.reduce((s, p) => s + parseFloat(p.monto || 0), 0);
+        const filas = pagos.map((p, i) => `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${this.formatDate(p.fecha_pago)}</td>
+                <td><strong>${p.nombre} ${p.apellidos}</strong></td>
+                <td>${p.parcela_codigo ? `<span class="pdf-chip">${this.shortParcelaCode(p.parcela_codigo)}</span>` : '-'}</td>
+                <td>${p.concepto || '-'}</td>
+                <td>${p.metodo_pago || t('pay.method_cash')}</td>
+                <td style="text-align:right"><strong>${parseFloat(p.monto).toFixed(2)} €</strong></td>
+            </tr>`).join('');
+        return `<div class="reporte-doc">
+            ${this.buildPDFHeader(org, t('rep.payments_title'), pagos.length, fecha)}
+            <table class="reporte-tabla">
+                <thead><tr><th>#</th><th>${t('pay.date')}</th><th>${t('nav.deceased')}</th><th>${t('dec.plot')}</th><th>${t('pay.concept')}</th><th>${t('pag.method')}</th><th style="text-align:right">${t('pay.amount')}</th></tr></thead>
+                <tbody>${filas || `<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">${t('msg.no_results')}</td></tr>`}</tbody>
+                <tfoot><tr><td colspan="6" style="text-align:right;font-weight:700;padding:8px 10px;border-top:2px solid #0f172a">${t('pag.total_collected')}:</td><td style="text-align:right;font-weight:700;padding:8px 10px;border-top:2px solid #0f172a">${total.toFixed(2)} €</td></tr></tfoot>
+            </table>
+        </div>`;
+    }
+
+    async imprimirReporte() {
+        const contenido = document.getElementById('reporte-contenido');
+        if (!contenido) return;
+
+        const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; padding: 0; }
+  .reporte-doc { padding: 0; }
+  .pdf-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 24px 16px; background: #0f172a; color: #fff; }
+  .pdf-header-left { display: flex; align-items: center; gap: 14px; }
+  .pdf-logo-circle { width: 40px; height: 40px; border-radius: 50%; background: #3b82f6; color: #fff; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pdf-org-name { font-size: 15px; font-weight: 700; color: #fff; }
+  .pdf-org-sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .pdf-header-right { text-align: right; }
+  .pdf-doc-title { font-size: 14px; font-weight: 700; color: #fff; }
+  .pdf-doc-meta { font-size: 10px; color: #94a3b8; margin-top: 3px; }
+  .pdf-divider { height: 3px; background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  thead th { background: #1e293b; color: #fff; padding: 7px 10px; text-align: left; font-size: 10px; letter-spacing: 0.03em; text-transform: uppercase; }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody tr:hover { background: #eff6ff; }
+  tbody td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 11px; }
+  tfoot td { background: #f1f5f9; }
+  .pdf-chip { background: #e0e7ff; color: #3730a3; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  .pdf-badge { padding: 2px 7px; border-radius: 10px; font-size: 9px; font-weight: 600; }
+  .pdf-badge-activo,.pdf-badge-disponible { background:#dcfce7; color:#166534; }
+  .pdf-badge-ocupada { background:#fef9c3; color:#854d0e; }
+  .pdf-badge-trasladado,.pdf-badge-exhumado { background:#e0e7ff; color:#3730a3; }
+  .pdf-badge-mantenimiento,.pdf-badge-reservada { background:#fff7ed; color:#9a3412; }
+  @page { margin: 12mm 12mm 18mm; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>${contenido.innerHTML}</body>
+</html>`;
+
+        const result = await window.electronAPI.printToPDF(html);
+        if (result.error) this.showNotification(t('err.gen_pdf').replace('{n}', result.error), 'error');
+        else this.showNotification(t('msg.pdf_ok'), 'success');
+    }
+
+    cerrarReporte() {
+        document.getElementById('reporte-preview').style.display = 'none';
+    }
+
+    // ── MULTI-DB ──────────────────────────────────────────────────────────────
+    async loadMultidbList() {
+        const container = document.getElementById('multidb-list');
+        if (!container) return;
+        try {
+            const { list, active } = await window.electronAPI.multidbList();
+            if (!list.length) {
+                container.innerHTML = `<p class="multidb-empty">${t('db.empty')}</p>`;
+                return;
+            }
+            container.innerHTML = list.map(db => `
+                <div class="multidb-item ${db.path === active ? 'multidb-active' : ''}">
+                    <div class="multidb-item-info">
+                        <div class="multidb-item-name">${db.name}</div>
+                        <div class="multidb-item-path" title="${db.path}">${db.path}</div>
+                    </div>
+                    ${db.path === active
+                        ? '<span class="badge badge-disponible" data-i18n="db.current">Activa</span>'
+                        : `<button class="btn btn-secondary btn-sm" onclick="app.multidbSwitch('${db.path.replace(/\\/g, '\\\\')}')"><span data-i18n="db.switch">Cambiar</span></button>`
+                    }
+                </div>
+            `).join('');
+            if (window.i18n) window.i18n.applyToDOM();
+        } catch (e) {
+            container.innerHTML = `<p class="multidb-empty">${t('db.load_error')}</p>`;
+        }
+    }
+
+    async multidbNew() {
+        let name = '', folder = '';
+        const result = await this.showCustomDialog({
+            title: t('db.new', 'Nueva Base de Datos'),
+            message: `
+                <div style="display:flex;flex-direction:column;gap:14px;">
+                    <div class="form-group">
+                        <label class="form-label">${t('db.create_name', 'Nombre del cementerio')} *</label>
+                        <input id="mdb-name" class="form-control" placeholder="Ej: Cementerio Norte" maxlength="60">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">${t('db.folder_label')}</label>
+                        <div style="display:flex;gap:8px;">
+                            <input id="mdb-folder" class="form-control" placeholder="${t('db.folder_ph')}" readonly>
+                            <button class="btn btn-secondary" style="white-space:nowrap" onclick="app._multidbPickFolder()">${t('db.browse')}</button>
+                        </div>
+                    </div>
+                </div>`,
+            buttons: [
+                { id: 'btn-cancel',  class: 'btn-secondary', text: t('btn.cancel', 'Cancelar'), value: 'cancel' },
+                { id: 'btn-ok',      class: 'btn-primary',   text: t('db.create'),              value: 'ok' }
+            ]
+        });
+        if (result !== 'ok') return;
+        name   = document.getElementById('mdb-name')?.value.trim();
+        folder = document.getElementById('mdb-folder')?.value.trim();
+        if (!name || !folder) { this.showNotification(t('db.fill_all'), 'error'); return; }
+        const res = await window.electronAPI.multidbCreate({ name, folder });
+        if (res.error) { this.showNotification('Error: ' + res.error, 'error'); return; }
+        this.showNotification(t('db.created').replace('{n}', name), 'success');
+        this.loadMultidbList();
+    }
+
+    async _multidbPickFolder() {
+        const res = await window.electronAPI.multidbSelectFolder();
+        if (res.success) {
+            const el = document.getElementById('mdb-folder');
+            if (el) el.value = res.folder;
+        }
+    }
+
+    async multidbOpen() {
+        const res = await window.electronAPI.multidbOpen();
+        if (res.canceled) return;
+        if (res.error) { this.showNotification('Error: ' + res.error, 'error'); return; }
+        this.showNotification(t('db.opened'), 'success');
+        this.loadMultidbList();
+    }
+
+    async multidbSwitch(dbPath) {
+        const confirm = await this.showCustomDialog({
+            title: t('db.switch_title', 'Cambiar base de datos'),
+            message: `<p style="margin:0;color:#64748b">${t('db.switch_confirm', 'La aplicación se reiniciará para cargar la nueva base de datos.')}</p>`,
+            buttons: [
+                { id: 'btn-cancel',  class: 'btn-secondary', text: t('btn.cancel', 'Cancelar'), value: 'cancel' },
+                { id: 'btn-ok',      class: 'btn-primary',   text: t('db.switch', 'Cambiar'),   value: 'ok' }
+            ]
+        });
+        if (confirm !== 'ok') return;
+        await window.electronAPI.multidbSwitch(dbPath);
+    }
+
+    // ── ONBOARDING ────────────────────────────────────────────────────────────
+    checkOnboarding() {
+        if (localStorage.getItem('memorix-onboarding-done')) return;
+        const overlay = document.getElementById('onboarding-overlay');
+        if (overlay) overlay.style.display = 'flex';
+        this._obStep = 1;
+        // Live language switch inside onboarding
+        document.querySelectorAll('input[name="ob-lang"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                window.i18n.setLocale(radio.value);
+                const sel = document.getElementById('lang-select');
+                if (sel) sel.value = radio.value;
+            });
+        });
+    }
+
+    onboardingNext() {
+        const step = this._obStep || 1;
+        if (step < 3) {
+            this._obStep = step + 1;
+            this._obRender();
+        }
+    }
+
+    onboardingPrev() {
+        const step = this._obStep || 1;
+        if (step > 1) {
+            this._obStep = step - 1;
+            this._obRender();
+        }
+    }
+
+    _obRender() {
+        const s = this._obStep;
+        document.querySelectorAll('.onboarding-step').forEach(el => el.classList.remove('active'));
+        const active = document.querySelector(`.onboarding-step[data-step="${s}"]`);
+        if (active) active.classList.add('active');
+        document.querySelectorAll('.ob-dot').forEach(d => d.classList.toggle('active', +d.dataset.dot === s));
+        const back   = document.getElementById('ob-back');
+        const next   = document.getElementById('ob-next');
+        const finish = document.getElementById('ob-finish');
+        if (back)   back.style.display   = s > 1 ? '' : 'none';
+        if (next)   next.style.display   = s < 3 ? '' : 'none';
+        if (finish) finish.style.display = s === 3 ? '' : 'none';
+    }
+
+    onboardingFinish() {
+        // Guardar datos de organización
+        const nombre    = document.getElementById('ob-nombre')?.value.trim();
+        const direccion = document.getElementById('ob-direccion')?.value.trim();
+        const telefono  = document.getElementById('ob-telefono')?.value.trim();
+        if (nombre) {
+            const org = this.getOrgInfo();
+            org.nombre    = nombre || org.nombre;
+            org.direccion = direccion || '';
+            org.telefono  = telefono  || '';
+            localStorage.setItem('cementerio-org', JSON.stringify(org));
+        }
+
+        // Guardar preferencias
+        const theme   = document.querySelector('input[name="ob-theme"]:checked')?.value || 'light';
+        const records = document.getElementById('ob-records')?.value || '50';
+        const lang    = document.querySelector('input[name="ob-lang"]:checked')?.value || 'es';
+        localStorage.setItem('cementerio-theme', theme);
+        localStorage.setItem('cementerio-records-per-page', records);
+        this.applyTheme(theme);
+        this.registrosPorPagina = parseInt(records);
+        if (window.i18n) window.i18n.setLocale(lang);
+
+        // Marcar como completado y cerrar
+        localStorage.setItem('memorix-onboarding-done', '1');
+        const overlay = document.getElementById('onboarding-overlay');
+        if (overlay) { overlay.style.opacity = '0'; overlay.style.transition = 'opacity .3s'; setTimeout(() => overlay.style.display = 'none', 300); }
+        this.showNotification(t('ob.saved'), 'success');
+    }
+
+    // ── EXPORTAR CSV ──────────────────────────────────────────────────────────
+    async exportarCSV(tipo) {
+        try {
+            const org  = this.getOrgInfo();
+            const fecha = new Date().toLocaleDateString('es-ES', { year:'numeric', month:'long', day:'numeric' });
+            let rows = [], headers = [], titulo = '', filename = '';
+
+            if (tipo === 'difuntos') {
+                const data = await window.electronAPI.getDifuntos({ limit: 9999 });
+                titulo = t('exp.dec_list');
+                headers = [t('exp.num'), t('exp.name'), t('exp.surnames'), t('exp.id_doc'), t('exp.sex'), t('exp.birthdate'), t('exp.deathdate'), t('exp.birthplace'), t('exp.cause'), t('exp.plot'), t('exp.status'), t('exp.observations')];
+                rows = data.map((d, i) => [i+1, d.nombre, d.apellidos, d.cedula || '', d.sexo === 'M' ? t('exp.male') : t('exp.female'), d.fecha_nacimiento || '', d.fecha_defuncion || '', d.lugar_nacimiento || '', d.causa_muerte || '', d.parcela_codigo ? this.shortParcelaCode(d.parcela_codigo) : '', d.estado, d.observaciones || '']);
+                filename = 'difuntos';
+            } else if (tipo === 'parcelas' || tipo === 'disponibles') {
+                const data = tipo === 'disponibles' ? await window.electronAPI.getParcelasDisponibles() : await window.electronAPI.getParcelas();
+                titulo = tipo === 'disponibles' ? t('exp.avail_list') : t('exp.plot_list');
+                headers = [t('exp.num'), t('exp.code'), t('exp.type'), t('exp.zone'), t('exp.section'), t('exp.row'), t('exp.number'), t('exp.location'), t('exp.status'), t('exp.price_eur'), t('exp.observations')];
+                rows = data.map((p, i) => [i+1, this.shortParcelaCode(p.codigo), p.tipo, p.zona, p.seccion, p.fila || '', p.numero, p.ubicacion, p.estado, p.precio ? parseFloat(p.precio).toFixed(2) : '', p.observaciones || '']);
+                filename = tipo === 'disponibles' ? 'parcelas_disponibles' : 'parcelas';
+            } else if (tipo === 'pagos') {
+                const data = await window.electronAPI.getAllPagos();
+                titulo = t('exp.pay_report');
+                headers = [t('exp.num'), t('exp.date'), t('exp.name'), t('exp.surnames'), t('exp.plot'), t('exp.concept'), t('exp.method'), t('exp.amount_eur')];
+                rows = data.map((p, i) => [i+1, p.fecha_pago || '', p.nombre, p.apellidos, p.parcela_codigo ? this.shortParcelaCode(p.parcela_codigo) : '', p.concepto || '', p.metodo_pago || 'Efectivo', parseFloat(p.monto || 0).toFixed(2)]);
+                // Fila de total
+                const total = rows.reduce((s, r) => s + parseFloat(r[7] || 0), 0);
+                rows.push(['', '', '', '', '', '', 'TOTAL', total.toFixed(2)]);
+                filename = 'pagos';
+            }
+
+            const esc = v => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
+
+            // Encabezado de organización (comentarios con #)
+            const metaLines = [
+                `# ${org.nombre || 'Memorix'} — ${titulo}`,
+                `# ${t('exp.generated')}: ${fecha}`,
+                org.direccion ? `# ${t('exp.address_label')}: ${org.direccion}` : '',
+                org.telefono  ? `# ${t('exp.contact')}: ${org.telefono}`        : '',
+                `# ${t('exp.total_records')}: ${rows.length}`,
+                ''
+            ].filter(l => l !== null).join('\r\n');
+
+            const dataLines = [headers, ...rows].map(row => row.map(esc).join(',')).join('\r\n');
+            const csvContent = metaLines + dataLines;
+
+            const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `memorix_${filename}_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            this.showNotification(t('exp.csv_success').replace('{n}', rows.length), 'success');
+        } catch (e) {
+            this.showNotification(t('err.export_csv').replace('{n}', e.message), 'error');
+        }
+    }
+
+    // ── EXPORTAR EXCEL ────────────────────────────────────────────────────────
+    async exportarExcel(tipo) {
+        try {
+            const org   = this.getOrgInfo();
+            const fecha = new Date().toISOString().slice(0, 10);
+            let sheets = [], filename = '';
+
+            if (tipo === 'difuntos') {
+                const data = await window.electronAPI.getDifuntos({ limit: 9999 });
+                const headers = [t('exp.num'), t('exp.name'), t('exp.surnames'), t('exp.id_doc'), t('exp.sex'), t('exp.birthdate'), t('exp.deathdate'), t('exp.birthplace'), t('exp.cause'), t('exp.plot'), t('exp.status'), t('exp.observations')];
+                const rows = data.map((d, i) => [i+1, d.nombre, d.apellidos, d.cedula || '', d.sexo === 'M' ? t('exp.male') : t('exp.female'), d.fecha_nacimiento || '', d.fecha_defuncion || '', d.lugar_nacimiento || '', d.causa_muerte || '', d.parcela_codigo ? this.shortParcelaCode(d.parcela_codigo) : '', d.estado, d.observaciones || '']);
+                sheets = [{ name: t('exp.dec_sheet'), headers, rows }];
+                filename = `memorix_difuntos_${fecha}.xlsx`;
+            } else if (tipo === 'parcelas' || tipo === 'disponibles') {
+                const data = tipo === 'disponibles' ? await window.electronAPI.getParcelasDisponibles() : await window.electronAPI.getParcelas();
+                const headers = [t('exp.num'), t('exp.code'), t('exp.type'), t('exp.zone'), t('exp.section'), t('exp.row'), t('exp.number'), t('exp.location'), t('exp.status'), t('exp.price_eur'), t('exp.observations')];
+                const rows = data.map((p, i) => [i+1, this.shortParcelaCode(p.codigo), p.tipo, p.zona, p.seccion, p.fila || '', p.numero, p.ubicacion, p.estado, p.precio ? parseFloat(p.precio) : 0, p.observaciones || '']);
+                sheets = [{ name: tipo === 'disponibles' ? t('exp.avail_sheet') : t('exp.plot_sheet'), headers, rows }];
+                filename = `memorix_${tipo === 'disponibles' ? 'parcelas_disponibles' : 'parcelas'}_${fecha}.xlsx`;
+            } else if (tipo === 'pagos') {
+                const data = await window.electronAPI.getAllPagos();
+                const headers = [t('exp.num'), t('exp.date'), t('exp.name'), t('exp.surnames'), t('exp.plot'), t('exp.concept'), t('exp.method'), t('exp.amount_eur')];
+                const rows = data.map((p, i) => [i+1, p.fecha_pago || '', p.nombre, p.apellidos, p.parcela_codigo ? this.shortParcelaCode(p.parcela_codigo) : '', p.concepto || '', p.metodo_pago || 'Efectivo', parseFloat(p.monto || 0)]);
+                const total = rows.reduce((s, r) => s + r[7], 0);
+                sheets = [{ name: 'Pagos', headers, rows, totals: ['', '', '', '', '', '', 'TOTAL', total] }];
+                filename = `memorix_pagos_${fecha}.xlsx`;
+            }
+
+            if (!sheets.length) return;
+            const res = await window.electronAPI.exportToExcel({ sheets, filename });
+            if (res.error) throw new Error(res.error);
+            this.showNotification(t('exp.excel_saved').replace('{n}', filename), 'success');
+        } catch (e) {
+            this.showNotification(t('err.export_excel').replace('{n}', e.message), 'error');
+        }
+    }
+
+    // ── BORRAR DATOS DE EJEMPLO ───────────────────────────────────────────────
+    async borrarDatosEjemplo() {
+        const result = await this.showCustomDialog({
+            title: t('cfg.delete_demo'),
+            message: `<div class="confirm-delete-body">
+                <div class="confirm-delete-icon confirm-delete-icon--danger">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </div>
+                <div class="confirm-delete-title">${t('del.all_title')}</div>
+                <p style="text-align:center;color:#64748b;font-size:13px;margin:8px 0 16px">${t('del.all_desc')}</p>
+                <div class="confirm-delete-warning">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                    ${t('del.all_warning')}
+                </div>
+            </div>`,
+            buttons: [
+                { id: 'btn-cancel', class: 'btn-secondary', text: t('btn.cancel'), value: 'cancel' },
+                { id: 'btn-confirm', class: 'btn-danger',    text: t('btn.delete'), value: 'confirm' }
+            ]
+        });
+        if (result !== 'confirm') return;
+        try {
+            await window.electronAPI.deleteSampleData();
+            this.showNotification(t('del.all_done'), 'success');
+            await this.loadDashboard();
+        } catch (e) {
+            this.showNotification(t('err.del_data').replace('{n}', e.message), 'error');
+        }
+    }
+
+    translateStatus(estado) {
+        const map = {
+            'Activo': t('status.active'),
+            'Trasladado': t('status.transferred'),
+            'Exhumado': t('status.exhumed'),
+            'Eliminado': t('status.deleted'),
+            'Disponible': t('status.available'),
+            'Ocupada': t('status.occupied'),
+            'Reservada': t('status.reserved'),
+            'Mantenimiento': t('status.maintenance')
+        };
+        return map[estado] || estado;
+    }
+
+    normalize(str) { return (str || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+
+    formatMoney(val) {
+        const n = parseFloat(val);
+        if (isNaN(n)) return '0 €';
+        return (Number.isInteger(n) ? n.toString() : n.toFixed(2)) + ' €';
+    }
+
+    // ── FILTROS PARCELAS ──────────────────────────────────────────────────────
+    bindParcelasFilters() {
+        const run = () => {
+            const texto = (document.getElementById('pf-texto')?.value || '').toLowerCase().trim();
+            const tipo  = document.getElementById('pf-tipo')?.value  || '';
+            const zona  = document.getElementById('pf-zona')?.value  || '';
+            const estado= document.getElementById('pf-estado')?.value || '';
+
+            let datos = this.originalData.parcelas || [];
+            if (texto)  datos = datos.filter(p => (p.codigo || '').toLowerCase().includes(texto) || (p.seccion || '').toLowerCase().includes(texto));
+            if (tipo)   datos = datos.filter(p => p.tipo === tipo);
+            if (zona)   datos = datos.filter(p => p.zona === zona);
+            if (estado) datos = datos.filter(p => p.estado === estado);
+
+            this.parcelasPagina = 1;
+            this.renderParcelasTable(datos);
+        };
+
+        ['pf-texto', 'pf-tipo', 'pf-zona', 'pf-estado'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', run);
+        });
+
+        document.getElementById('pf-clear')?.addEventListener('click', () => {
+            ['pf-texto'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['pf-tipo','pf-zona','pf-estado'].forEach(id => { const el = document.getElementById(id); if (el) el.selectedIndex = 0; });
+            this.parcelasPagina = 1;
+            this.renderParcelasTable(this.originalData.parcelas || []);
+        });
+    }
+
+    async populateParcelasFilterSelects() {
+        try {
+            const etiquetas = await window.electronAPI.getAllEtiquetas();
+            const tipos = etiquetas.filter(e => e.categoria === 'tipo').map(e => e.valor).sort();
+            const zonas = etiquetas.filter(e => e.categoria === 'zona').map(e => e.valor).sort();
+
+            const selTipo = document.getElementById('pf-tipo');
+            if (selTipo) {
+                selTipo.innerHTML = `<option value="">${t('pf.all_types')}</option>` +
+                    tipos.map(v => `<option value="${v}">${v}</option>`).join('');
+            }
+            const selZona = document.getElementById('pf-zona');
+            if (selZona) {
+                selZona.innerHTML = `<option value="">${t('pf.all_zones')}</option>` +
+                    zonas.map(z => `<option value="${z}">${z}</option>`).join('');
+            }
+        } catch(e) {
+            // fallback: derive from loaded data
+            const parcelas = this.originalData.parcelas || [];
+            const selTipo = document.getElementById('pf-tipo');
+            if (selTipo) {
+                const vals = [...new Set(parcelas.map(p => p.tipo).filter(Boolean))].sort();
+                selTipo.innerHTML = `<option value="">${t('pf.all_types')}</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+            }
+            const selZona = document.getElementById('pf-zona');
+            if (selZona) {
+                const vals = [...new Set(parcelas.map(p => p.zona).filter(Boolean))].sort();
+                selZona.innerHTML = `<option value="">${t('pf.all_zones')}</option>` + vals.map(v => `<option value="${v}">${v}</option>`).join('');
+            }
+        }
+    }
+
+    // ── VALIDACIÓN DE FORMULARIOS ─────────────────────────────────────────────
+    validateForm(fields) {
+        let valid = true;
+        fields.forEach(({el, rules}) => {
+            const msg = this.validateField(el, rules);
+            this.setFieldError(el, msg);
+            if (msg) valid = false;
+        });
+        return valid;
+    }
+
+    validateField(el, rules) {
+        const val = el.value.trim();
+        if (rules.required && !val) return t('val.required');
+        if (rules.minLength && val.length < rules.minLength) return t('val.min_length').replace('{n}', rules.minLength);
+        if (rules.min !== undefined && val !== '' && parseFloat(val) < rules.min) return t('val.min_value').replace('{n}', rules.min);
+        if (rules.gt !== undefined && val !== '' && parseFloat(val) <= rules.gt) return t('val.gt_value').replace('{n}', rules.gt);
+        if (rules.beforeDate) {
+            const other = document.getElementById(rules.beforeDate);
+            if (other && other.value && val && val >= other.value) return t('val.before_death');
+        }
+        return null;
+    }
+
+    setFieldError(el, msg) {
+        el.classList.toggle('input-error', !!msg);
+        let errEl = el.parentElement.querySelector('.field-error');
+        if (msg) {
+            if (!errEl) { errEl = document.createElement('span'); errEl.className = 'field-error'; el.parentElement.appendChild(errEl); }
+            errEl.textContent = msg;
+        } else if (errEl) errEl.remove();
+    }
+
 }
 
 // Inicializar la aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new CementerioApp();
     
-    // Hacer disponible el método updateParcelaMessage globalmente
-    window.updateParcelaMessage = (parcelaId, parcelaText) => {
-        if (window.app && typeof window.app.updateParcelaMessage === 'function') {
-            window.app.updateParcelaMessage(parcelaId, parcelaText);
-        }
-    };
-    
-    // Hacer disponible el método buscarCiudades globalmente
-    window.buscarCiudades = (termino) => {
-        if (window.app && typeof window.app.buscarCiudades === 'function') {
-            window.app.buscarCiudades(termino);
-        } else {
-            console.error('Window.app no está disponible o buscarCiudades no es una función');
-        }
-    };
+    // Event listeners para parcela y autocompletado de ciudades
+    const parcelaSelect = document.getElementById('parcela_id');
+    if (parcelaSelect) {
+        parcelaSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            window.app.updateParcelaMessage(this.value, selectedOption ? selectedOption.text : '');
+        });
+    }
+
+    const lugarNacimiento = document.getElementById('lugar_nacimiento');
+    if (lugarNacimiento) {
+        lugarNacimiento.addEventListener('input', function() {
+            window.app.buscarCiudades(this.value);
+        });
+        lugarNacimiento.addEventListener('focus', function() {
+            window.app.buscarCiudades(this.value);
+        });
+    }
+
+    // Aviso de licencia próxima a expirar
+    if (window.electronAPI && window.electronAPI.onLicenseExpiringSoon) {
+        window.electronAPI.onLicenseExpiringSoon((days) => {
+            if (window.app) {
+                const msg = days <= 1
+                    ? 'Tu licencia expira mañana. Renuévala para no perder el acceso.'
+                    : `Tu licencia expira en ${days} días. Renuévala para continuar usando Memorix.`;
+                window.app.showNotification(msg, 'warning');
+            }
+        });
+    }
+
+    // Auto-updater UI
+    if (window.electronAPI && window.electronAPI.onUpdateStatus) {
+        window.electronAPI.onUpdateStatus((data) => {
+            const banner  = document.getElementById('update-banner');
+            const msg     = document.getElementById('update-banner-msg');
+            const btn     = document.getElementById('update-banner-btn');
+            if (!banner || !msg || !btn) return;
+
+            if (data.type === 'available') {
+                msg.textContent = `Nueva versión disponible: v${data.version}`;
+                btn.textContent = 'Descargar';
+                btn.onclick = () => { window.electronAPI.updateDownload(); btn.textContent = 'Descargando...'; btn.disabled = true; };
+                banner.style.display = 'flex';
+            } else if (data.type === 'downloading') {
+                msg.textContent = `Descargando actualización... ${data.percent}%`;
+                btn.textContent = `${data.percent}%`;
+                btn.disabled = true;
+                banner.style.display = 'flex';
+            } else if (data.type === 'downloaded') {
+                msg.textContent = `v${data.version} lista para instalar. Se instalará al cerrar la app.`;
+                btn.textContent = 'Instalar ahora';
+                btn.disabled = false;
+                btn.onclick = () => window.electronAPI.updateInstall();
+                banner.style.display = 'flex';
+            } else if (data.type === 'error') {
+                console.warn('Update error:', data.message);
+            }
+        });
+    }
 });
