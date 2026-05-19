@@ -47,6 +47,22 @@
     .nav-links { display: flex; align-items: center; gap: 24px; }
     .nav-links a { color: var(--muted); font-size: 0.9rem; transition: color .2s; }
     .nav-links a:hover { color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+
+    /* LANG SWITCHER */
+    .lang-switcher {
+      display: flex; align-items: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .lang-btn {
+      padding: 6px 12px; font-size: 0.82rem; font-weight: 600;
+      color: var(--muted); cursor: pointer; border: none; background: transparent;
+      transition: all .2s;
+    }
+    .lang-btn:hover { color: var(--text); }
+    .lang-btn.active { background: var(--accent); color: #fff; }
+
     .btn {
       display: inline-flex; align-items: center; gap: 8px;
       padding: 10px 20px; border-radius: 8px; font-weight: 600; font-size: 0.9rem;
@@ -189,77 +205,83 @@
     Memorix
   </div>
   <div class="nav-links">
-    <a href="#features">Features</a>
-    <a href="#screenshots">Screenshots</a>
-    <a href="#pricing">Pricing</a>
-    <a href="mailto:bblottus@gmail.com">Support</a>
+    <a href="#features" data-i18n="nav.features">Features</a>
+    <a href="#screenshots" data-i18n="nav.screenshots">Screenshots</a>
+    <a href="#pricing" data-i18n="nav.pricing">Pricing</a>
+    <a href="mailto:bblottus@gmail.com" data-i18n="nav.support">Support</a>
   </div>
-  <a href="https://github.com/jopasma7/Memorix/releases/latest" class="btn btn-primary">Download</a>
+  <div class="nav-right">
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('es')">ES</button>
+    </div>
+    <a href="https://github.com/jopasma7/Memorix/releases/latest" class="btn btn-primary" data-i18n="nav.download">Download</a>
+  </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
   <div class="hero-badge">
-    <span>🪦</span> Cemetery Management Software
+    <span>🪦</span> <span data-i18n="hero.badge">Cemetery Management Software</span>
   </div>
-  <h1>Run your cemetery.<br/>Not your spreadsheets.</h1>
-  <p>Memorix handles plot management, deceased records, PDF reports, and statistics — all in one offline desktop app built for professionals.</p>
+  <h1 data-i18n="hero.title">Run your cemetery.<br/>Not your spreadsheets.</h1>
+  <p data-i18n="hero.desc">Memorix handles plot management, deceased records, PDF reports, and statistics — all in one offline desktop app built for professionals.</p>
   <div class="hero-actions">
-    <a href="https://memorix.lemonsqueezy.com/checkout" class="btn btn-primary btn-lg">Buy Now — €129.99 / year</a>
-    <a href="https://github.com/jopasma7/Memorix/releases/latest" class="btn btn-outline btn-lg">Download Free Trial</a>
+    <a href="https://memorix.lemonsqueezy.com/checkout" class="btn btn-primary btn-lg" data-i18n="hero.buy">Buy Now — €129.99 / year</a>
+    <a href="https://github.com/jopasma7/Memorix/releases/latest" class="btn btn-outline btn-lg" data-i18n="hero.trial">Download Free Trial</a>
   </div>
-  <p class="hero-note">7-day free trial · Windows 10+ · Works fully offline</p>
+  <p class="hero-note" data-i18n="hero.note">7-day free trial · Windows 10+ · Works fully offline</p>
 </section>
 
 <!-- HERO SCREENSHOT -->
 <div class="screenshot-wrap">
-  <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Difuntos.png" alt="Memorix — Deceased records" />
+  <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Difuntos.png" alt="Memorix" />
 </div>
 
 <!-- FEATURES -->
 <section class="section" id="features">
-  <p class="section-label">Features</p>
-  <h2 class="section-title">Everything you need to manage a cemetery</h2>
+  <p class="section-label" data-i18n="features.label">Features</p>
+  <h2 class="section-title" data-i18n="features.title">Everything you need to manage a cemetery</h2>
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-icon">📊</div>
-      <h3>Dashboard & Activity</h3>
-      <p>Real-time statistics — total plots, occupancy rate, recent registrations, and a live activity feed.</p>
+      <h3 data-i18n="f1.title">Dashboard & Activity</h3>
+      <p data-i18n="f1.desc">Real-time statistics — total plots, occupancy rate, recent registrations, and a live activity feed.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🗺️</div>
-      <h3>Plot Management</h3>
-      <p>Register plots with type, zone, and location. Track status: Available, Occupied, Reserved, or Maintenance.</p>
+      <h3 data-i18n="f2.title">Plot Management</h3>
+      <p data-i18n="f2.desc">Register plots with type, zone, and location. Track status: Available, Occupied, Reserved, or Maintenance.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">📋</div>
-      <h3>Deceased Records</h3>
-      <p>Full records with personal details, death information, and direct plot assignment. Searchable and exportable.</p>
+      <h3 data-i18n="f3.title">Deceased Records</h3>
+      <p data-i18n="f3.desc">Full records with personal details, death information, and direct plot assignment. Searchable and exportable.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">📄</div>
-      <h3>PDF Reports</h3>
-      <p>Generate professional, print-ready PDF documents from any table view with your organization's details.</p>
+      <h3 data-i18n="f4.title">PDF Reports</h3>
+      <p data-i18n="f4.desc">Generate professional, print-ready PDF documents from any table view with your organization's details.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🌐</div>
-      <h3>English & Spanish</h3>
-      <p>Full interface available in both English and Spanish. Switch instantly from Settings.</p>
+      <h3 data-i18n="f5.title">English & Spanish</h3>
+      <p data-i18n="f5.desc">Full interface available in both English and Spanish. Switch instantly from Settings.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔒</div>
-      <h3>Offline & Secure</h3>
-      <p>All data stays on your machine. No cloud, no subscriptions to external services, no data ever sent out.</p>
+      <h3 data-i18n="f6.title">Offline & Secure</h3>
+      <p data-i18n="f6.desc">All data stays on your machine. No cloud, no subscriptions to external services, no data ever sent out.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🔄</div>
-      <h3>Automatic Updates</h3>
-      <p>Memorix updates itself silently in the background via GitHub Releases — always on the latest version.</p>
+      <h3 data-i18n="f7.title">Automatic Updates</h3>
+      <p data-i18n="f7.desc">Memorix updates itself silently in the background via GitHub Releases — always on the latest version.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🎨</div>
-      <h3>Light & Dark Theme</h3>
-      <p>A clean, modern interface in both light and dark mode. Switch from Settings at any time.</p>
+      <h3 data-i18n="f8.title">Light & Dark Theme</h3>
+      <p data-i18n="f8.desc">A clean, modern interface in both light and dark mode. Switch from Settings at any time.</p>
     </div>
   </div>
 </section>
@@ -267,77 +289,77 @@
 <!-- SCREENSHOTS -->
 <section id="screenshots">
   <div class="section" style="padding-bottom: 0;">
-    <p class="section-label">Screenshots</p>
-    <h2 class="section-title">See it in action</h2>
+    <p class="section-label" data-i18n="screenshots.label">Screenshots</p>
+    <h2 class="section-title" data-i18n="screenshots.title">See it in action</h2>
   </div>
   <div class="gallery">
     <div class="gallery-item full">
       <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Difuntos.png" alt="Deceased records — light mode" />
-      <p>Deceased records — light mode</p>
+      <p data-i18n="sc1">Deceased records — light mode</p>
     </div>
     <div class="gallery-item">
       <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Difuntos2.png" alt="Deceased records — dark mode" />
-      <p>Deceased records — dark mode</p>
+      <p data-i18n="sc2">Deceased records — dark mode</p>
     </div>
     <div class="gallery-item">
       <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Config.png" alt="Settings panel" />
-      <p>Settings & customization</p>
+      <p data-i18n="sc3">Settings & customization</p>
     </div>
     <div class="gallery-item">
       <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Reportes.png" alt="PDF report" />
-      <p>PDF report — document view</p>
+      <p data-i18n="sc4">PDF report — document view</p>
     </div>
     <div class="gallery-item">
       <img src="https://raw.githubusercontent.com/jopasma7/Memorix/master/assets/Reportes2.png" alt="PDF print preview" />
-      <p>PDF report — print preview</p>
+      <p data-i18n="sc5">PDF report — print preview</p>
     </div>
   </div>
 </section>
 
 <!-- PRICING -->
 <section class="section" id="pricing" style="padding-bottom: 0;">
-  <p class="section-label">Pricing</p>
-  <h2 class="section-title">Simple, honest pricing</h2>
+  <p class="section-label" data-i18n="pricing.label">Pricing</p>
+  <h2 class="section-title" data-i18n="pricing.title">Simple, honest pricing</h2>
 </section>
 <div class="pricing-wrap">
   <div class="pricing-card">
-    <div class="pricing-badge">7-day free trial included</div>
-    <div class="pricing-price">€129.99 <span>/ year</span></div>
-    <div class="pricing-sub">One license · One installation · All features</div>
+    <div class="pricing-badge" data-i18n="pricing.badge">7-day free trial included</div>
+    <div class="pricing-price">€129.99 <span data-i18n="pricing.period">/ year</span></div>
+    <div class="pricing-sub" data-i18n="pricing.sub">One license · One installation · All features</div>
     <ul class="pricing-features">
-      <li><span class="check">✓</span> Plot & deceased record management</li>
-      <li><span class="check">✓</span> PDF report generation</li>
-      <li><span class="check">✓</span> Dashboard with real-time statistics</li>
-      <li><span class="check">✓</span> English & Spanish interface</li>
-      <li><span class="check">✓</span> Light & dark theme</li>
-      <li><span class="check">✓</span> Automatic updates</li>
-      <li><span class="check">✓</span> Email support</li>
+      <li><span class="check">✓</span> <span data-i18n="pf1">Plot & deceased record management</span></li>
+      <li><span class="check">✓</span> <span data-i18n="pf2">PDF report generation</span></li>
+      <li><span class="check">✓</span> <span data-i18n="pf3">Dashboard with real-time statistics</span></li>
+      <li><span class="check">✓</span> <span data-i18n="pf4">English & Spanish interface</span></li>
+      <li><span class="check">✓</span> <span data-i18n="pf5">Light & dark theme</span></li>
+      <li><span class="check">✓</span> <span data-i18n="pf6">Automatic updates</span></li>
+      <li><span class="check">✓</span> <span data-i18n="pf7">Email support</span></li>
     </ul>
-    <a href="https://memorix.lemonsqueezy.com/checkout" class="btn btn-primary btn-lg" style="width:100%; justify-content: center;">Buy Now</a>
-    <p class="trial-note">No payment required to start the free trial — just download and run.</p>
+    <a href="https://memorix.lemonsqueezy.com/checkout" class="btn btn-primary btn-lg" style="width:100%; justify-content: center;" data-i18n="pricing.buy">Buy Now</a>
+    <p class="trial-note" data-i18n="pricing.note">No payment required to start the free trial — just download and run.</p>
   </div>
 </div>
 
 <!-- REQUIREMENTS -->
 <section class="section" style="padding-top: 48px;">
-  <p class="section-label">System Requirements</p>
-  <h2 class="section-title" style="margin-bottom: 32px;">What you need to run Memorix</h2>
+  <p class="section-label" data-i18n="req.label">System Requirements</p>
+  <h2 class="section-title" style="margin-bottom: 32px;" data-i18n="req.title">What you need to run Memorix</h2>
   <div class="req-grid">
     <div class="req-item">
-      <div class="label">Operating System</div>
-      <div class="value">Windows 10 (64-bit) or later</div>
+      <div class="label" data-i18n="req.os.label">Operating System</div>
+      <div class="value" data-i18n="req.os.value">Windows 10 (64-bit) or later</div>
     </div>
     <div class="req-item">
-      <div class="label">RAM</div>
-      <div class="value">256 MB minimum</div>
+      <div class="label" data-i18n="req.ram.label">RAM</div>
+      <div class="value" data-i18n="req.ram.value">256 MB minimum</div>
     </div>
     <div class="req-item">
-      <div class="label">Storage</div>
-      <div class="value">150 MB free space</div>
+      <div class="label" data-i18n="req.storage.label">Storage</div>
+      <div class="value" data-i18n="req.storage.value">150 MB free space</div>
     </div>
     <div class="req-item">
-      <div class="label">Internet</div>
-      <div class="value">Only for activation & updates</div>
+      <div class="label" data-i18n="req.internet.label">Internet</div>
+      <div class="value" data-i18n="req.internet.value">Only for activation & updates</div>
     </div>
   </div>
 </section>
@@ -349,12 +371,164 @@
     Memorix © 2026
   </div>
   <div style="display:flex; gap:24px; flex-wrap:wrap; justify-content:center;">
-    <a href="https://github.com/jopasma7/Memorix/releases/latest">Download</a>
-    <a href="https://memorix.lemonsqueezy.com/checkout">Buy License</a>
-    <a href="mailto:bblottus@gmail.com">Support</a>
+    <a href="https://github.com/jopasma7/Memorix/releases/latest" data-i18n="nav.download">Download</a>
+    <a href="https://memorix.lemonsqueezy.com/checkout" data-i18n="footer.buy">Buy License</a>
+    <a href="mailto:bblottus@gmail.com" data-i18n="nav.support">Support</a>
     <a href="https://github.com/jopasma7/Memorix">GitHub</a>
   </div>
 </footer>
+
+<script>
+  const translations = {
+    en: {
+      'nav.features': 'Features',
+      'nav.screenshots': 'Screenshots',
+      'nav.pricing': 'Pricing',
+      'nav.support': 'Support',
+      'nav.download': 'Download',
+      'hero.badge': 'Cemetery Management Software',
+      'hero.title': 'Run your cemetery.<br/>Not your spreadsheets.',
+      'hero.desc': 'Memorix handles plot management, deceased records, PDF reports, and statistics — all in one offline desktop app built for professionals.',
+      'hero.buy': 'Buy Now — €129.99 / year',
+      'hero.trial': 'Download Free Trial',
+      'hero.note': '7-day free trial · Windows 10+ · Works fully offline',
+      'features.label': 'Features',
+      'features.title': 'Everything you need to manage a cemetery',
+      'f1.title': 'Dashboard & Activity',
+      'f1.desc': 'Real-time statistics — total plots, occupancy rate, recent registrations, and a live activity feed.',
+      'f2.title': 'Plot Management',
+      'f2.desc': 'Register plots with type, zone, and location. Track status: Available, Occupied, Reserved, or Maintenance.',
+      'f3.title': 'Deceased Records',
+      'f3.desc': 'Full records with personal details, death information, and direct plot assignment. Searchable and exportable.',
+      'f4.title': 'PDF Reports',
+      'f4.desc': "Generate professional, print-ready PDF documents from any table view with your organization's details.",
+      'f5.title': 'English & Spanish',
+      'f5.desc': 'Full interface available in both English and Spanish. Switch instantly from Settings.',
+      'f6.title': 'Offline & Secure',
+      'f6.desc': 'All data stays on your machine. No cloud, no subscriptions to external services, no data ever sent out.',
+      'f7.title': 'Automatic Updates',
+      'f7.desc': 'Memorix updates itself silently in the background via GitHub Releases — always on the latest version.',
+      'f8.title': 'Light & Dark Theme',
+      'f8.desc': 'A clean, modern interface in both light and dark mode. Switch from Settings at any time.',
+      'screenshots.label': 'Screenshots',
+      'screenshots.title': 'See it in action',
+      'sc1': 'Deceased records — light mode',
+      'sc2': 'Deceased records — dark mode',
+      'sc3': 'Settings & customization',
+      'sc4': 'PDF report — document view',
+      'sc5': 'PDF report — print preview',
+      'pricing.label': 'Pricing',
+      'pricing.title': 'Simple, honest pricing',
+      'pricing.badge': '7-day free trial included',
+      'pricing.period': '/ year',
+      'pricing.sub': 'One license · One installation · All features',
+      'pf1': 'Plot & deceased record management',
+      'pf2': 'PDF report generation',
+      'pf3': 'Dashboard with real-time statistics',
+      'pf4': 'English & Spanish interface',
+      'pf5': 'Light & dark theme',
+      'pf6': 'Automatic updates',
+      'pf7': 'Email support',
+      'pricing.buy': 'Buy Now',
+      'pricing.note': 'No payment required to start the free trial — just download and run.',
+      'req.label': 'System Requirements',
+      'req.title': 'What you need to run Memorix',
+      'req.os.label': 'Operating System',
+      'req.os.value': 'Windows 10 (64-bit) or later',
+      'req.ram.label': 'RAM',
+      'req.ram.value': '256 MB minimum',
+      'req.storage.label': 'Storage',
+      'req.storage.value': '150 MB free space',
+      'req.internet.label': 'Internet',
+      'req.internet.value': 'Only for activation & updates',
+      'footer.buy': 'Buy License',
+    },
+    es: {
+      'nav.features': 'Características',
+      'nav.screenshots': 'Capturas',
+      'nav.pricing': 'Precio',
+      'nav.support': 'Soporte',
+      'nav.download': 'Descargar',
+      'hero.badge': 'Software de Gestión de Cementerios',
+      'hero.title': 'Gestiona tu cementerio.<br/>No tus hojas de cálculo.',
+      'hero.desc': 'Memorix gestiona parcelas, registros de difuntos, informes PDF y estadísticas — todo en una aplicación de escritorio offline pensada para profesionales.',
+      'hero.buy': 'Comprar — €129,99 / año',
+      'hero.trial': 'Descargar Prueba Gratuita',
+      'hero.note': '7 días de prueba gratuita · Windows 10+ · Funciona completamente offline',
+      'features.label': 'Características',
+      'features.title': 'Todo lo que necesitas para gestionar un cementerio',
+      'f1.title': 'Panel y Actividad',
+      'f1.desc': 'Estadísticas en tiempo real — parcelas totales, tasa de ocupación, registros recientes y un feed de actividad en vivo.',
+      'f2.title': 'Gestión de Parcelas',
+      'f2.desc': 'Registra parcelas con tipo, zona y ubicación. Controla el estado: Disponible, Ocupada, Reservada o Mantenimiento.',
+      'f3.title': 'Registro de Difuntos',
+      'f3.desc': 'Fichas completas con datos personales, información del fallecimiento y asignación directa a parcela. Buscable y exportable.',
+      'f4.title': 'Informes PDF',
+      'f4.desc': 'Genera documentos PDF profesionales y listos para imprimir desde cualquier tabla, con los datos de tu organización.',
+      'f5.title': 'Inglés y Español',
+      'f5.desc': 'Interfaz completa disponible en inglés y español. Cambia al instante desde Configuración.',
+      'f6.title': 'Offline y Seguro',
+      'f6.desc': 'Todos los datos se quedan en tu equipo. Sin nube, sin servicios externos, sin datos enviados fuera.',
+      'f7.title': 'Actualizaciones Automáticas',
+      'f7.desc': 'Memorix se actualiza silenciosamente en segundo plano a través de GitHub Releases — siempre en la última versión.',
+      'f8.title': 'Tema Claro y Oscuro',
+      'f8.desc': 'Una interfaz moderna y limpia en modo claro y oscuro. Cambia desde Configuración en cualquier momento.',
+      'screenshots.label': 'Capturas de Pantalla',
+      'screenshots.title': 'Vélo en acción',
+      'sc1': 'Registro de difuntos — modo claro',
+      'sc2': 'Registro de difuntos — modo oscuro',
+      'sc3': 'Configuración y personalización',
+      'sc4': 'Informe PDF — vista de documento',
+      'sc5': 'Informe PDF — vista previa de impresión',
+      'pricing.label': 'Precio',
+      'pricing.title': 'Precio simple y transparente',
+      'pricing.badge': 'Incluye 7 días de prueba gratuita',
+      'pricing.period': '/ año',
+      'pricing.sub': 'Una licencia · Una instalación · Todas las funciones',
+      'pf1': 'Gestión de parcelas y difuntos',
+      'pf2': 'Generación de informes PDF',
+      'pf3': 'Panel con estadísticas en tiempo real',
+      'pf4': 'Interfaz en inglés y español',
+      'pf5': 'Tema claro y oscuro',
+      'pf6': 'Actualizaciones automáticas',
+      'pf7': 'Soporte por correo electrónico',
+      'pricing.buy': 'Comprar Ahora',
+      'pricing.note': 'No se requiere pago para iniciar la prueba gratuita — solo descarga y ejecuta.',
+      'req.label': 'Requisitos del Sistema',
+      'req.title': 'Lo que necesitas para ejecutar Memorix',
+      'req.os.label': 'Sistema Operativo',
+      'req.os.value': 'Windows 10 (64 bits) o superior',
+      'req.ram.label': 'RAM',
+      'req.ram.value': '256 MB mínimo',
+      'req.storage.label': 'Almacenamiento',
+      'req.storage.value': '150 MB de espacio libre',
+      'req.internet.label': 'Internet',
+      'req.internet.value': 'Solo para activación y actualizaciones',
+      'footer.buy': 'Comprar Licencia',
+    }
+  };
+
+  let currentLang = 'en';
+
+  function setLang(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      const val = translations[lang][key];
+      if (val !== undefined) el.innerHTML = val;
+    });
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.toLowerCase() === lang);
+    });
+    localStorage.setItem('memorix-lang', lang);
+  }
+
+  // Init
+  const saved = localStorage.getItem('memorix-lang');
+  const browser = navigator.language?.startsWith('es') ? 'es' : 'en';
+  setLang(saved || browser);
+</script>
 
 </body>
 </html>
