@@ -13,7 +13,7 @@
 
 **Memorix** is a desktop application that simplifies every aspect of cemetery administration — from plot management to deceased records, PDF reports, and real-time statistics. Built for efficiency, designed for professionals.
 
-[**Buy Now — €129.99 / year**](https://memorix.lemonsqueezy.com/checkout) &nbsp;·&nbsp; [Download](https://github.com/jopasma7/Memorix/releases/latest) &nbsp;·&nbsp; [Support](#support)
+[**Website**](https://jopasma7.github.io/Memorix/) &nbsp;·&nbsp; [**Buy Now — €129.99 / year**](https://memorix.lemonsqueezy.com/checkout) &nbsp;·&nbsp; [Download](https://github.com/jopasma7/Memorix/releases/latest) &nbsp;·&nbsp; [Support](#support)
 
 ---
 
