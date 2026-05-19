@@ -1,0 +1,39 @@
+# Source code — managed in private repo (jopasma7/Trabajos)
+main.js
+src/
+package.json
+package-lock.json
+CHANGELOG.md
+cementerio.code-workspace
+assets/icon.ico
+docs/MANUAL.md
+docs/MANUAL.pdf
+docs/MANUAL_EN.md
+docs/MANUAL_EN.pdf
+
+# Dependencies
+node_modules/
+
+# Database backups and temporary files
+*.db-backup
+*.db-journal
+*.db-wal
+*.tmp
+*.temp
+
+# System files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE files
+.vscode/settings.json
+.idea/
+
+# Build files
+dist/
+build/
+
+# Environment files
+.env
+.env.local
