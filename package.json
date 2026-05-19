@@ -1,0 +1,101 @@
+{
+  "name": "memorix",
+  "version": "1.0.0",
+  "description": "Memorix",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx electron .",
+    "dev": "npx electron . --dev",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "build:win:publish": "electron-builder --win --publish always",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "electron",
+    "memorix",
+    "cementerio",
+    "gestion",
+    "desktop-app"
+  ],
+  "author": "Alejandro Pastor Mayor <jopasma7@github.com>",
+  "license": "MIT",
+  "build": {
+    "appId": "com.memorix.cementerio",
+    "productName": "Memorix",
+    "copyright": "Copyright © 2025 Alejandro Pastor Mayor",
+    "publish": {
+      "provider": "github",
+      "owner": "jopasma7",
+      "repo": "Memorix",
+      "private": false
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "src/**/*",
+      "assets/**/*",
+      "node_modules/**/*",
+      "!node_modules/electron-builder/**",
+      "!node_modules/electron-packager/**",
+      "!dist/**",
+      "!data/**"
+    ],
+    "extraResources": [
+      { "from": "docs/MANUAL.pdf",    "to": "MANUAL.pdf" },
+      { "from": "docs/MANUAL_EN.pdf", "to": "MANUAL_EN.pdf" }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": [
+        "es_ES",
+        "en_US"
+      ],
+      "language": "3082",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Memorix",
+      "uninstallDisplayName": "Memorix",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.png",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png",
+      "category": "Office"
+    }
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.2",
+    "electron": "^20.3.12",
+    "electron-builder": "^24.0.0",
+    "png-to-ico": "^3.0.1"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3",
+    "moment": "^2.29.4",
+    "node-machine-id": "^1.1.12",
+    "sqlite3": "^5.1.7",
+    "xlsx": "^0.18.5"
+  }
+}

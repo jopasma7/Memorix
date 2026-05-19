@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorix</title>
+    <link rel="stylesheet" href="../styles/main.css">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+    <!-- Update banner -->
+    <div id="update-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#1e293b;color:#f8fafc;padding:10px 20px;display:none;align-items:center;gap:12px;font-size:13px;box-shadow:0 -2px 12px rgba(0,0,0,.3)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <span id="update-banner-msg" style="flex:1"></span>
+        <button id="update-banner-btn" style="background:#38bdf8;color:#0f172a;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer"></button>
+        <button onclick="document.getElementById('update-banner').style.display='none'" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;line-height:1">×</button>
+    </div>
+
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-split">
+            <div class="login-brand">
+                <img src="../../assets/title.png" alt="Memorix" class="login-brand-img">
+            </div>
+            <div class="login-panel">
+                <div class="login-panel-inner">
+                    <div class="login-welcome">
+                        <h1 data-i18n="login.welcome">Bienvenido</h1>
+                        <p data-i18n="login.subtitle">Introduce tu contraseña para acceder al sistema</p>
+                    </div>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="login-password" data-i18n="login.pwd_label">Contraseña</label>
+                            <input type="password" id="login-password" placeholder="••••••••" autofocus>
+                        </div>
+                        <div id="login-error" class="login-error" style="display:none;" data-i18n="login.wrong_pwd">Contraseña incorrecta</div>
+                        <button type="submit" class="btn btn-primary btn-full" data-i18n="login.enter">Entrar</button>
+                        <p id="login-default-hint" data-i18n-html="login.default_hint" style="margin-top:10px; font-size:0.78rem; color:#888; text-align:center;">La contraseña por defecto es <strong>1234</strong>. Cámbiala desde Configuración.</p>
+                    </form>
+                    <div class="login-footer">
+                        <div class="login-footer-divider"></div>
+                        <p class="login-footer-brand">Memorix</p>
+                        <p class="login-footer-sub" data-i18n="login.footer_sub">Software profesional de gestión empresarial.</p>
+                        <p class="login-footer-copy">&copy; 2025 Memorix &mdash; <span data-i18n="about.rights">Todos los derechos reservados</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Memorix</h1>
+        </header>
+
+        <main class="app-main">
+            <div class="sidebar">
+                <div class="sidebar-logo">
+                    <img src="../../assets/icon.png" alt="Memorix" class="sidebar-logo-img">
+                    <div class="sidebar-logo-text">
+                        <span class="sidebar-logo-name">Memorix</span>
+                        <span class="sidebar-logo-sub" data-i18n="app.tagline">Gestión Empresarial</span>
+                    </div>
+                </div>
+                <nav class="nav-menu">
+                    <h3 data-i18n="nav.navigation">Navegación</h3>
+                    <ul>
+                        <li><a href="#" data-section="dashboard" class="nav-link active"><i data-lucide="layout-dashboard"></i><span data-i18n="nav.dashboard">Dashboard</span></a></li>
+                        <li><a href="#" data-section="difuntos" class="nav-link"><i data-lucide="users"></i><span data-i18n="nav.deceased">Difuntos</span></a></li>
+                        <li><a href="#" data-section="parcelas" class="nav-link"><i data-lucide="map-pin"></i><span data-i18n="nav.plots">Parcelas</span></a></li>
+                        <li><a href="#" data-section="busqueda" class="nav-link"><i data-lucide="search"></i><span data-i18n="nav.search">Búsqueda</span></a></li>
+                        <li><a href="#" data-section="reportes" class="nav-link"><i data-lucide="file-text"></i><span data-i18n="nav.reports">Reportes</span></a></li>
+                        <li><a href="#" data-section="configuracion" class="nav-link"><i data-lucide="settings"></i><span data-i18n="nav.config">Configuración</span></a></li>
+                    </ul>
+                    <div class="nav-help-btn">
+                        <a href="#" onclick="app.openManual(); return false;" class="nav-help-link">
+                            <i data-lucide="book-open"></i>
+                            <span data-i18n="nav.manual">Manual de usuario</span>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+
+            <div class="content">
+                <!-- Dashboard Section -->
+                <section id="dashboard-section" class="content-section" style="display: block;">
+                    <div class="section-page-header"><div class="sph-accent"></div><div class="sph-text"><h2 data-i18n="dash.title">Dashboard</h2><p data-i18n="dash.subtitle">Resumen general del sistema</p></div></div>
+                    <div class="module-grid">
+                        <div class="module-card" onclick="app.showSection('difuntos')">
+                            <div class="module-icon" style="--ic:#e0e7ff;--cc:#4f46e5"><i data-lucide="users"></i></div>
+                            <div class="module-body">
+                                <div class="module-stat" id="total-difuntos">0</div>
+                                <div class="module-label" data-i18n="dash.deceased_label">Difuntos</div>
+                            </div>
+                        </div>
+                        <div class="module-card" onclick="app.showSection('parcelas')">
+                            <div class="module-icon" style="--ic:#dcfce7;--cc:#16a34a"><i data-lucide="map-pin"></i></div>
+                            <div class="module-body">
+                                <div class="module-stat" id="total-parcelas">0</div>
+                                <div class="module-label" data-i18n="dash.plots_label">Parcelas</div>
+                            </div>
+                        </div>
+                        <div class="module-card">
+                            <div class="module-icon" style="--ic:#fef9c3;--cc:#ca8a04"><i data-lucide="lock"></i></div>
+                            <div class="module-body">
+                                <div class="module-stat" id="parcelas-ocupadas">0</div>
+                                <div class="module-label"><span data-i18n="dash.occupied">Ocupadas</span></div>
+                            </div>
+                        </div>
+                        <div class="module-card">
+                            <div class="module-icon" style="--ic:#dcfce7;--cc:#16a34a"><i data-lucide="check-circle"></i></div>
+                            <div class="module-body">
+                                <div class="module-stat" id="parcelas-disponibles">0</div>
+                                <div class="module-label"><span data-i18n="dash.available">Disponibles</span></div>
+                            </div>
+                        </div>
+                        <div class="module-card">
+                            <div class="module-icon" style="--ic:#fce7f3;--cc:#db2777"><i data-lucide="trending-up"></i></div>
+                            <div class="module-body">
+                                <div class="module-stat module-stat--money" id="ingresos-mes">0 €</div>
+                                <div class="module-label"><span data-i18n="dash.income_month">Ingresos este mes</span></div>
+                            </div>
+                        </div>
+                        <div class="module-card">
+                            <div class="module-icon" style="--ic:#fff7ed;--cc:#ea580c"><i data-lucide="percent"></i></div>
+                            <div class="module-body">
+                                <div class="module-stat" id="ocupacion-pct">0%</div>
+                                <div class="module-label"><span data-i18n="dash.occupancy">Ocupación</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="recent-activity">
+                        <div id="recentList" class="activity-list">
+                            <p data-i18n="msg.no_activity">No hay actividad reciente.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Difuntos Section -->
+                <section id="difuntos-section" class="content-section" style="display: none;">
+                    <div class="section-header">
+                        <div class="section-page-header"><div class="sph-accent"></div><div class="sph-text"><h2 data-i18n="dec.title">Difuntos</h2><p data-i18n="dec.subtitle">Gestión de registros de difuntos</p></div></div>
+                        <button id="btn-nuevo-difunto" class="btn btn-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> <span data-i18n="dec.new">Nuevo Difunto</span>
+                        </button>
+                    </div>
+                    
+                    <div class="records-container">
+                        <div class="records-table-container" id="difuntos-table-container">
+                            <table class="records-table" id="difuntos-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-column="id">ID <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="nombre"><span data-i18n="th.full_name">Nombre Completo</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="fecha_nacimiento"><span data-i18n="th.birthdate">Fecha Nacimiento</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="fecha_defuncion"><span data-i18n="th.deathdate">Fecha Defunción</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="parcela_codigo"><span data-i18n="dec.plot">Parcela</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="action-header"><span data-i18n="th.actions">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="6" data-i18n="msg.loading">Cargando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Parcelas Section -->
+                <section id="parcelas-section" class="content-section" style="display: none;">
+                    <div class="section-header">
+                        <div class="section-page-header"><div class="sph-accent"></div><div class="sph-text"><h2 data-i18n="plot.title">Parcelas</h2><p data-i18n="plot.subtitle">Gestión de parcelas y nichos</p></div></div>
+                        <button id="btn-nueva-parcela" class="btn btn-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> <span data-i18n="plot.new">Nueva Parcela</span>
+                        </button>
+                    </div>
+
+                    <div class="table-filters-bar" id="parcelas-filters">
+                        <input type="text" id="pf-texto" placeholder="Buscar código o sección..." class="tf-input" data-i18n-ph="pf.search_ph">
+                        <select id="pf-tipo" class="tf-select"><option value="" data-i18n="pf.all_types">Todos los tipos</option></select>
+                        <select id="pf-zona" class="tf-select"><option value="" data-i18n="pf.all_zones">Todas las zonas</option></select>
+                        <select id="pf-estado" class="tf-select">
+                            <option value="" data-i18n="pf.all_states">Todos los estados</option>
+                            <option value="disponible" data-i18n="status.disponible_opt">Disponible</option>
+                            <option value="ocupada" data-i18n="status.ocupada_opt">Ocupada</option>
+                        </select>
+                        <button class="tf-clear" id="pf-clear" data-i18n="btn.clear">Limpiar</button>
+                    </div>
+
+
+                    <div class="records-container">
+                        <div class="records-table-container" id="parcelas-table-container">
+                            <table class="records-table" id="parcelas-table">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-column="codigo"><span data-i18n="plot.code">Código</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="tipo"><span data-i18n="plot.type">Tipo</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="zona"><span data-i18n="plot.zone">Zona</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="seccion"><span data-i18n="plot.section">Sección</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="fila"><span data-i18n="plot.row">Fila</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="ubicacion"><span data-i18n="plot.location">Ubicación</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="estado"><span data-i18n="plot.status">Estado</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="sortable" data-column="precio"><span data-i18n="plot.price">Precio</span> <span class="sort-icon">↕️</span></th>
+                                        <th class="action-header"><span data-i18n="th.actions">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="9" data-i18n="msg.loading">Cargando...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Búsqueda Section -->
+                <section id="busqueda-section" class="content-section" style="display: none;">
+                    <div class="section-header">
+                        <div class="section-page-header"><div class="sph-accent"></div><div class="sph-text"><h2 data-i18n="nav.search">Búsqueda</h2><p data-i18n="search.subtitle">Búsqueda avanzada de registros</p></div></div>
+                        <span id="search-count" class="search-count"></span>
+                    </div>
+                    <div class="search-advanced">
+                        <div class="search-filters-card">
+                            <div class="search-filters-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                                <span data-i18n="search.filters">Filtros de búsqueda</span>
+                                <button type="button" id="search-clear-btn" class="search-clear-btn">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    <span data-i18n="btn.clear">Limpiar</span>
+                                </button>
+                            </div>
+                            <div class="search-filters-grid">
+                                <div class="sf-field">
+                                    <label data-i18n="dec.name">Nombre</label>
+                                    <input type="text" id="search-nombre" name="search-nombre" placeholder="Nombre..." data-i18n-ph="dec.name">
+                                </div>
+                                <div class="sf-field">
+                                    <label data-i18n="dec.surnames">Apellidos</label>
+                                    <input type="text" id="search-apellidos" name="search-apellidos" placeholder="Apellidos..." data-i18n-ph="dec.surnames">
+                                </div>
+                                <div class="sf-field">
+                                    <label data-i18n="dec.status">Estado</label>
+                                    <select id="search-estado" name="search-estado">
+                                        <option value="" data-i18n="status.all_option">Todos</option>
+                                        <option value="activo" data-i18n="status.active">Activo</option>
+                                        <option value="trasladado" data-i18n="status.transferred">Trasladado</option>
+                                        <option value="exhumado" data-i18n="status.exhumed">Exhumado</option>
+                                    </select>
+                                </div>
+                                <div class="sf-field">
+                                    <label data-i18n="search.city">Ciudad</label>
+                                    <input type="text" id="search-ciudad" name="search-ciudad" placeholder="Ciudad..." data-i18n-ph="search.city">
+                                </div>
+                                <div class="sf-field">
+                                    <label data-i18n="dec.plot">Parcela</label>
+                                    <input type="text" id="search-parcela" name="search-parcela" placeholder="Código..." data-i18n-ph="plot.code">
+                                </div>
+                                <div class="sf-field">
+                                    <label data-i18n="search.death_from">Defunción desde</label>
+                                    <input type="date" id="search-fecha-desde" name="search-fecha-desde">
+                                </div>
+                                <div class="sf-field">
+                                    <label data-i18n="search.death_to">Defunción hasta</label>
+                                    <input type="date" id="search-fecha-hasta" name="search-fecha-hasta">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="search-results" class="search-results">
+                            <p class="search-placeholder" data-i18n="search.placeholder">Escribe para buscar...</p>
+                        </div>
+                    </div>
+                </section>
+
+
+                <!-- Reportes Section -->
+                <section id="reportes-section" class="content-section" style="display: none;">
+                    <div class="section-page-header"><div class="sph-accent"></div><div class="sph-text"><h2 data-i18n="rep.title">Reportes</h2><p data-i18n="rep.subtitle">Generación de informes y documentos PDF</p></div></div>
+                    <div class="reportes-section-title" data-i18n="rep.pdf_reports">Informes PDF</div>
+                    <div class="reportes-grid">
+                        <div class="reporte-card">
+                            <div class="reporte-icon" style="--rc:#e0e7ff;--rcc:#4f46e5">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="24" height="24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div class="reporte-card-body">
+                                <h3 data-i18n="rep.card1_title">Listado de Difuntos</h3>
+                                <p data-i18n="rep.card1_desc">Todos los difuntos registrados con sus datos y parcelas asignadas.</p>
+                            </div>
+                            <div class="reporte-card-actions">
+                                <button class="btn btn-primary reporte-btn" onclick="app.generarReporte('difuntos')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                    <span data-i18n="rep.gen_pdf">Generar PDF</span>
+                                </button>
+                                <button class="btn btn-success reporte-btn" onclick="app.exportarExcel('difuntos')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+                                    <span data-i18n="rep.export_excel">Excel</span>
+                                </button>
+                                <button class="btn btn-secondary reporte-btn" onclick="app.exportarCSV('difuntos')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="rep.export_csv">CSV</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="reporte-card">
+                            <div class="reporte-icon" style="--rc:#fef9c3;--rcc:#ca8a04">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="24" height="24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            </div>
+                            <div class="reporte-card-body">
+                                <h3 data-i18n="rep.card2_title">Listado de Parcelas</h3>
+                                <p data-i18n="rep.card2_desc">Estado actual de todas las parcelas del cementerio.</p>
+                            </div>
+                            <div class="reporte-card-actions">
+                                <button class="btn btn-primary reporte-btn" onclick="app.generarReporte('parcelas')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                    <span data-i18n="rep.gen_pdf">Generar PDF</span>
+                                </button>
+                                <button class="btn btn-success reporte-btn" onclick="app.exportarExcel('parcelas')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+                                    <span data-i18n="rep.export_excel">Excel</span>
+                                </button>
+                                <button class="btn btn-secondary reporte-btn" onclick="app.exportarCSV('parcelas')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="rep.export_csv">CSV</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="reporte-card">
+                            <div class="reporte-icon" style="--rc:#dcfce7;--rcc:#16a34a">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="24" height="24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            </div>
+                            <div class="reporte-card-body">
+                                <h3 data-i18n="rep.card3_title">Parcelas Disponibles</h3>
+                                <p data-i18n="rep.card3_desc">Parcelas libres disponibles para nuevas asignaciones.</p>
+                            </div>
+                            <div class="reporte-card-actions">
+                                <button class="btn btn-primary reporte-btn" onclick="app.generarReporte('disponibles')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                    <span data-i18n="rep.gen_pdf">Generar PDF</span>
+                                </button>
+                                <button class="btn btn-success reporte-btn" onclick="app.exportarExcel('disponibles')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+                                    <span data-i18n="rep.export_excel">Excel</span>
+                                </button>
+                                <button class="btn btn-secondary reporte-btn" onclick="app.exportarCSV('disponibles')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="rep.export_csv">CSV</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="reporte-card">
+                            <div class="reporte-icon" style="--rc:#fce7f3;--rcc:#db2777">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="24" height="24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                            </div>
+                            <div class="reporte-card-body">
+                                <h3 data-i18n="rep.card4_title">Reporte de Pagos</h3>
+                                <p data-i18n="rep.card4_desc">Historial completo de pagos registrados en el sistema.</p>
+                            </div>
+                            <div class="reporte-card-actions">
+                                <button class="btn btn-primary reporte-btn" onclick="app.generarReporte('pagos')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                                    <span data-i18n="rep.gen_pdf">Generar PDF</span>
+                                </button>
+                                <button class="btn btn-success reporte-btn" onclick="app.exportarExcel('pagos')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+                                    <span data-i18n="rep.export_excel">Excel</span>
+                                </button>
+                                <button class="btn btn-secondary reporte-btn" onclick="app.exportarCSV('pagos')">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="rep.export_csv">CSV</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="reporte-preview" class="reporte-preview" style="display:none;">
+                        <div class="reporte-preview-header">
+                            <span id="reporte-titulo"></span>
+                            <div>
+                                <button class="btn btn-primary" onclick="app.imprimirReporte()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> <span data-i18n="btn.print">Imprimir / PDF</span></button>
+                                <button class="btn btn-secondary" onclick="app.cerrarReporte()"><span data-i18n="btn.close">✖ Cerrar</span></button>
+                            </div>
+                        </div>
+                        <div id="reporte-contenido" class="reporte-contenido"></div>
+                    </div>
+                </section>
+                <!-- Configuración Section -->
+                <section id="configuracion-section" class="content-section" style="display: none;">
+                    <div class="section-page-header"><div class="sph-accent"></div><div class="sph-text"><h2 data-i18n="cfg.title">Configuración</h2><p data-i18n="cfg.subtitle">Ajustes del sistema y base de datos</p></div></div>
+                    <div class="config-container">
+                        <!-- Base de Datos -->
+                        <div class="config-card">
+                            <div class="config-card-header">
+                                <div class="config-card-icon" style="--cic:#eff6ff;--ccc:#3b82f6">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                                </div>
+                                <div>
+                                    <h3 data-i18n="cfg.db_title">Base de Datos</h3>
+                                    <p data-i18n="cfg.db_sub">Administración y mantenimiento</p>
+                                </div>
+                            </div>
+                            <div class="config-stats">
+                                <div class="config-stat-row">
+                                    <span class="config-stat-label" data-i18n="cfg.db_estado">Estado</span>
+                                    <span class="badge badge-disponible" data-i18n="cfg.db_connected2">Conectada</span>
+                                </div>
+                                <div class="config-stat-row">
+                                    <span class="config-stat-label" data-i18n="cfg.db_size_label">Tamaño</span>
+                                    <strong id="db-size" class="config-stat-val">—</strong>
+                                </div>
+                            </div>
+                            <div class="config-actions">
+                                <button class="btn btn-primary" onclick="app.backupDatabase()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    <span data-i18n="cfg.backup">Respaldar</span>
+                                </button>
+                                <button class="btn btn-secondary" onclick="app.optimizeDatabase()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+                                    <span data-i18n="cfg.optimize">Optimizar</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Interfaz -->
+                        <div class="config-card">
+                            <div class="config-card-header">
+                                <div class="config-card-icon" style="--cic:#faf5ff;--ccc:#7c3aed">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                                </div>
+                                <div>
+                                    <h3 data-i18n="cfg.display_title">Interfaz y Preferencias</h3>
+                                    <p data-i18n="cfg.display_sub">Personalización general</p>
+                                </div>
+                            </div>
+                            <div class="config-options">
+                                <div class="option-group">
+                                    <label for="theme-select" data-i18n="cfg.theme">Tema del Sistema</label>
+                                    <select id="theme-select" class="form-control">
+                                        <option value="light" data-i18n="cfg.theme_light">Claro</option>
+                                        <option value="dark" data-i18n="cfg.theme_dark">Oscuro</option>
+                                        <option value="auto" data-i18n="cfg.theme_auto">Automático</option>
+                                    </select>
+                                </div>
+                                <div class="option-group">
+                                    <label for="records-per-page" data-i18n="cfg.records_page">Registros por página</label>
+                                    <select id="records-per-page" class="form-control">
+                                        <option value="25">25</option>
+                                        <option value="50" selected>50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                                <div class="option-group">
+                                    <label for="lang-select" data-i18n="cfg.language">Idioma</label>
+                                    <select id="lang-select" class="form-control" onchange="app.changeLanguage(this.value)">
+                                        <option value="es">Español</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="config-actions">
+                                <button class="btn btn-primary" onclick="app.savePreferences()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                                    <span data-i18n="btn.save">Guardar</span>
+                                </button>
+                                <button class="btn btn-secondary" onclick="app.resetPreferences()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+                                    <span data-i18n="btn.restore">Restaurar</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Seguridad -->
+                        <div class="config-card">
+                            <div class="config-card-header">
+                                <div class="config-card-icon" style="--cic:#fff7ed;--ccc:#ea580c">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 data-i18n="cfg.security_title">Seguridad</h3>
+                                    <p data-i18n="cfg.security_sub">Acceso y contraseña</p>
+                                </div>
+                            </div>
+                            <div class="config-stats">
+                                <div class="config-stat-row">
+                                    <span class="config-stat-label" data-i18n="cfg.protection">Protección</span>
+                                    <span class="badge badge-disponible" data-i18n="cfg.protection_on">Activa</span>
+                                </div>
+                            </div>
+                            <div class="config-actions">
+                                <button class="btn btn-primary" onclick="app.cambiarContrasena()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    <span data-i18n="cfg.change_pwd">Cambiar Contraseña</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Organización -->
+                        <div class="config-card">
+                            <div class="config-card-header">
+                                <div class="config-card-icon" style="--cic:#f0f9ff;--ccc:#0284c7">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                </div>
+                                <div>
+                                    <h3 data-i18n="cfg.org_title">Organización</h3>
+                                    <p data-i18n="cfg.org_data_sub">Datos para reportes y PDF</p>
+                                </div>
+                            </div>
+                            <div class="config-options">
+                                <div class="option-group">
+                                    <label for="org-nombre" data-i18n="cfg.org_company">Nombre de la Empresa</label>
+                                    <input type="text" id="org-nombre" class="form-control" placeholder="Cementerio Municipal..." data-i18n-ph="cfg.org_ph_company">
+                                </div>
+                                <div class="option-group">
+                                    <label for="org-direccion" data-i18n="cfg.org_address">Dirección</label>
+                                    <input type="text" id="org-direccion" class="form-control" placeholder="Calle, Ciudad..." data-i18n-ph="cfg.org_ph_address">
+                                </div>
+                                <div class="option-group">
+                                    <label for="org-telefono" data-i18n="cfg.org_phone_label">Teléfono / Contacto</label>
+                                    <input type="text" id="org-telefono" class="form-control" placeholder="+34 000 000 000" data-i18n-ph="cfg.org_ph_phone">
+                                </div>
+                            </div>
+                            <div class="config-actions">
+                                <button class="btn btn-primary" onclick="app.saveOrgInfo()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                                    <span data-i18n="btn.save">Guardar</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sistema -->
+                        <div class="config-card">
+                            <div class="config-card-header">
+                                <div class="config-card-icon" style="--cic:#f0fdf4;--ccc:#16a34a">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                </div>
+                                <div>
+                                    <h3 data-i18n="cfg.sys_title">Información del Sistema</h3>
+                                    <p data-i18n="cfg.sys_sub">Detalles técnicos</p>
+                                </div>
+                            </div>
+                            <div class="config-stats">
+                                <div class="config-stat-row">
+                                    <span class="config-stat-label" data-i18n="cfg.version_label">Versión</span>
+                                    <strong id="app-version" class="config-stat-val">1.0.0</strong>
+                                </div>
+                                <div class="config-stat-row">
+                                    <span class="config-stat-label" data-i18n="cfg.platform_label">Plataforma</span>
+                                    <strong id="platform" class="config-stat-val">Win32</strong>
+                                </div>
+                                <div class="config-stat-row">
+                                    <span class="config-stat-label" data-i18n="cfg.electron">Electron</span>
+                                    <strong id="electron-version" class="config-stat-val">—</strong>
+                                </div>
+                            </div>
+                            <div class="config-actions">
+                                <button class="btn btn-secondary" onclick="app.showAbout()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                    <span data-i18n="cfg.about">Acerca de</span>
+                                </button>
+                                <button class="btn btn-danger" onclick="app.borrarDatosEjemplo()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                    <span data-i18n="cfg.delete_demo">Borrar todos los datos</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Licencia -->
+                        <div class="config-card">
+                            <div class="config-card-header">
+                                <div class="config-card-icon" style="--cic:#eff6ff;--ccc:#2563eb">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 data-i18n="cfg.license_title">Licencia</h3>
+                                    <p data-i18n="cfg.license_sub">Estado de tu suscripción</p>
+                                </div>
+                            </div>
+                            <div id="license-info-block" style="font-size:13px;color:var(--text-muted);padding:4px 0">
+                                <span data-i18n="cfg.loading">Cargando...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Etiquetas -->
+                    <div class="etiquetas-section">
+                        <div class="etiquetas-header">
+                            <div class="etiquetas-header-left">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                                <span data-i18n="etq.title">Etiquetas y Categorías</span>
+                            </div>
+                            <p data-i18n="etq.subtitle">Gestiona los valores disponibles para los campos de parcelas</p>
+                        </div>
+                        <div class="etiquetas-grid">
+                            <div class="etiqueta-card" id="etiq-tipo">
+                                <div class="etiqueta-card-header">
+                                    <div class="etiqueta-card-title">
+                                        <div class="etiqueta-card-icon" style="--eic:#e0e7ff;--ecc:#4f46e5">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                                        </div>
+                                        <span data-i18n="etq.plot_type">Tipo de Parcela</span>
+                                    </div>
+                                    <button class="etiqueta-add-btn" onclick="app.addEtiqueta('tipo')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        <span data-i18n="etq.add">Añadir</span>
+                                    </button>
+                                </div>
+                                <div class="etiqueta-list" id="list-tipo"></div>
+                            </div>
+                            <div class="etiqueta-card" id="etiq-zona">
+                                <div class="etiqueta-card-header">
+                                    <div class="etiqueta-card-title">
+                                        <div class="etiqueta-card-icon" style="--eic:#dcfce7;--ecc:#16a34a">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                        </div>
+                                        <span data-i18n="etq.zones">Zonas</span>
+                                    </div>
+                                    <button class="etiqueta-add-btn" onclick="app.addEtiqueta('zona')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        <span data-i18n="etq.add">Añadir</span>
+                                    </button>
+                                </div>
+                                <div class="etiqueta-list" id="list-zona"></div>
+                            </div>
+                            <div class="etiqueta-card" id="etiq-ubicacion">
+                                <div class="etiqueta-card-header">
+                                    <div class="etiqueta-card-title">
+                                        <div class="etiqueta-card-icon" style="--eic:#fef9c3;--ecc:#ca8a04">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                        </div>
+                                        <span data-i18n="etq.location">Ubicación</span>
+                                    </div>
+                                    <button class="etiqueta-add-btn" onclick="app.addEtiqueta('ubicacion')">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                        <span data-i18n="etq.add">Añadir</span>
+                                    </button>
+                                </div>
+                                <div class="etiqueta-list" id="list-ubicacion"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modales -->
+    <!-- Modal Difunto -->
+    <div id="modal-difunto" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header modal-header-colored" style="--mhc:#4f46e5;--mhbg:#eef2ff">
+                <div class="modal-header-left">
+                    <div class="modal-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-difunto-title">Nuevo Difunto</h3>
+                        <p class="modal-header-sub" data-i18n="modal.dec_subtitle">Complete los datos del registro</p>
+                    </div>
+                </div>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="form-difunto" class="form">
+                    <div class="form-section">
+                        <div class="form-section-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <span data-i18n="dec.personal_data">Datos Personales</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="nombre" data-i18n="dec.name_req">Nombre <span class="req">*</span></label>
+                                <input type="text" id="nombre" name="nombre" placeholder="Ej: Juan" data-i18n-ph="dec.name_ph" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="apellidos" data-i18n="dec.surnames_req">Apellidos <span class="req">*</span></label>
+                                <input type="text" id="apellidos" name="apellidos" placeholder="Ej: García López" data-i18n-ph="dec.surnames_ph" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cedula" data-i18n="dec.document">Documento / Cédula</label>
+                                <input type="text" id="cedula" name="cedula" placeholder="Ej: 001-123456-0001A" data-i18n-ph="dec.document_ph">
+                            </div>
+                            <div class="form-group">
+                                <label for="sexo" data-i18n="dec.sex_req">Sexo <span class="req">*</span></label>
+                                <select id="sexo" name="sexo" required>
+                                    <option value="M" selected data-i18n="dec.sex_m">Masculino</option>
+                                    <option value="F" data-i18n="dec.sex_f">Femenino</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            <span data-i18n="dec.dates">Fechas</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fecha_nacimiento" data-i18n="dec.birthdate">Fecha de Nacimiento</label>
+                                <input type="date" id="fecha_nacimiento" name="fecha_nacimiento">
+                            </div>
+                            <div class="form-group">
+                                <label for="fecha_defuncion" data-i18n="dec.deathdate_req">Fecha de Defunción <span class="req">*</span></label>
+                                <input type="date" id="fecha_defuncion" name="fecha_defuncion" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span data-i18n="dec.plot_assign">Asignación de Parcela</span>
+                        </div>
+                        <div class="parcela-container">
+                            <div class="form-group">
+                                <label for="parcela_id" data-i18n="dec.plot_avail">Parcela Disponible</label>
+                                <select id="parcela_id" name="parcela_id">
+                                    <option value="" data-i18n="msg.sin_asignar">Sin asignar</option>
+                                </select>
+                            </div>
+                            <div id="parcela-status" class="parcela-status-right" style="display: none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" class="status-icon"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <span id="parcela-message">Sin parcela asignada</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            <span data-i18n="dec.extra_info">Información Adicional</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="lugar_nacimiento" data-i18n="dec.birthplace">Lugar de Nacimiento</label>
+                                <input type="text" id="lugar_nacimiento" name="lugar_nacimiento"
+                                       list="ciudades" placeholder="Escribe para buscar ciudades..."
+                                       data-i18n-ph="dec.birthplace_ph"
+                                       autocomplete="off">
+                                <datalist id="ciudades"></datalist>
+                                <div id="ciudades-loading" style="display: none;" class="loading-indicator" data-i18n="msg.searching">Buscando ciudades...</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="causa_muerte" data-i18n="dec.cause_of_death">Causa de Muerte</label>
+                                <input type="text" id="causa_muerte" name="causa_muerte" placeholder="Ej: Paro cardíaco" data-i18n-ph="dec.cause_ph">
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="observaciones" data-i18n="dec.observations">Observaciones</label>
+                            <textarea id="observaciones" name="observaciones" rows="3" placeholder="Notas adicionales..." data-i18n-ph="form.notes_ph"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <span data-i18n="btn.cancel">Cancelar</span>
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            <span data-i18n="btn.save_record">Guardar Registro</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Parcela -->
+    <div id="modal-parcela" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header modal-header-colored" style="--mhc:#0891b2;--mhbg:#ecfeff">
+                <div class="modal-header-left">
+                    <div class="modal-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                    <div>
+                        <h3 id="modal-parcela-title">Nueva Parcela</h3>
+                        <p class="modal-header-sub" data-i18n="modal.plot_subtitle">Complete la información de la parcela</p>
+                    </div>
+                </div>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="form-parcela" class="form">
+                    <div class="form-section">
+                        <div class="form-section-label">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span data-i18n="plot.section_info">Información de la Parcela</span>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="codigo" data-i18n="plot.code_req">Código <span class="req">*</span></label>
+                                <input type="text" id="codigo" name="codigo" placeholder="Ej: A-1-001" data-i18n-ph="plot.code_ph" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="tipo" data-i18n="plot.type_req">Tipo <span class="req">*</span></label>
+                                <select id="tipo" name="tipo" required>
+                                    <option value="" data-i18n="form.select_ph">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="zona" data-i18n="plot.zone_req">Zona <span class="req">*</span></label>
+                                <select id="zona" name="zona" required>
+                                    <option value="" data-i18n="form.select_ph">Seleccionar...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ubicacion" data-i18n="plot.location_req">Ubicación <span class="req">*</span></label>
+                                <select id="ubicacion" name="ubicacion" required>
+                                    <option value="" data-i18n="form.select_ph">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="seccion" data-i18n="plot.section_req">Sección <span class="req">*</span></label>
+                                <input type="text" id="seccion" name="seccion" placeholder="Ej: A" data-i18n-ph="plot.section_ph" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="fila" data-i18n="plot.row">Fila</label>
+                                <input type="number" id="fila" name="fila" min="1" placeholder="Ej: 3" data-i18n-ph="plot.row_ph">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="numero" data-i18n="plot.number_req">Número <span class="req">*</span></label>
+                                <input type="number" id="numero" name="numero" required min="1" placeholder="Ej: 12" data-i18n-ph="plot.number_ph">
+                            </div>
+                            <div class="form-group">
+                                <label for="precio" data-i18n="plot.price">Precio</label>
+                                <input type="number" id="precio" name="precio" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="observaciones-parcela" data-i18n="dec.observations">Observaciones</label>
+                            <textarea id="observaciones-parcela" name="observaciones" rows="3" placeholder="Notas adicionales..." data-i18n-ph="form.notes_ph"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <span data-i18n="btn.cancel">Cancelar</span>
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                            <span data-i18n="btn.save_plot">Guardar Parcela</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal Familiares -->
+    <!-- Modal Familiares -->
+    <div id="modal-familiares" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header modal-header-colored" style="--mhc:#16a34a;--mhbg:#f0fdf4">
+                <div class="modal-header-left">
+                    <div class="modal-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="fam.title">Familiares / Responsables</h3>
+                        <p class="modal-header-sub" id="familiares-difunto-nombre"></p>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="btn btn-primary btn-small" onclick="app.abrirFormFamiliar()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span data-i18n="btn.add_label">Añadir</span>
+                    </button>
+                    <span class="close" data-modal="modal-familiares">&times;</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="familiares-lista" class="familiares-lista"><p data-i18n="msg.loading">Cargando...</p></div>
+                <div id="form-familiar-container" style="display:none;" class="form-familiar-container">
+                    <div class="form-section-label" style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span id="form-familiar-titulo" data-i18n="fam.new">Nuevo Familiar</span>
+                    </div>
+                    <form id="form-familiar">
+                        <input type="hidden" id="familiar-id" value="">
+                        <div class="form-row">
+                            <div class="form-group"><label data-i18n="dec.name_req">Nombre <span class="req">*</span></label><input type="text" id="fam-nombre" placeholder="Nombre" data-i18n-ph="dec.name" required></div>
+                            <div class="form-group"><label data-i18n="dec.surnames_req">Apellidos <span class="req">*</span></label><input type="text" id="fam-apellidos" placeholder="Apellidos" data-i18n-ph="dec.surnames" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label data-i18n="fam.relation_req">Relación <span class="req">*</span></label>
+                                <select id="fam-relacion" required>
+                                    <option value="" data-i18n="form.select_ph">Seleccionar...</option>
+                                    <option value="Cónyuge" data-i18n="fam.rel_spouse">Cónyuge</option>
+                                    <option value="Hijo/a" data-i18n="fam.rel_child">Hijo/a</option>
+                                    <option value="Padre/Madre" data-i18n="fam.rel_parent">Padre/Madre</option>
+                                    <option value="Hermano/a" data-i18n="fam.rel_sibling">Hermano/a</option>
+                                    <option value="Nieto/a" data-i18n="fam.rel_grandchild">Nieto/a</option>
+                                    <option value="Sobrino/a" data-i18n="fam.rel_nephew">Sobrino/a</option>
+                                    <option value="Otro" data-i18n="fam.rel_other">Otro</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label data-i18n="fam.phone">Teléfono</label><input type="text" id="fam-telefono" placeholder="+505 1234-5678"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label data-i18n="fam.email">Email</label><input type="email" id="fam-email" placeholder="correo@ejemplo.com"></div>
+                            <div class="form-group"><label data-i18n="fam.cedula">Cédula / DNI</label><input type="text" id="fam-cedula" placeholder="Documento de identidad" data-i18n-ph="fam.cedula_ph"></div>
+                        </div>
+                        <div class="form-group full-width"><label data-i18n="fam.address">Dirección</label><input type="text" id="fam-direccion" placeholder="Dirección completa" data-i18n-ph="fam.address_ph"></div>
+                        <div class="form-group form-check">
+                            <label class="check-label">
+                                <input type="checkbox" id="fam-responsable">
+                                <span data-i18n="fam.is_responsible">Es responsable principal</span>
+                            </label>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="app.cancelarFormFamiliar()">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span data-i18n="btn.cancel">Cancelar</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                <span data-i18n="btn.save">Guardar</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pagos -->
+    <div id="modal-pagos" class="modal" style="display: none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header modal-header-colored" style="--mhc:#ca8a04;--mhbg:#fefce8">
+                <div class="modal-header-left">
+                    <div class="modal-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                    </div>
+                    <div>
+                        <h3 data-i18n="pay.title">Pagos y Cobros</h3>
+                        <p class="modal-header-sub" id="pagos-difunto-nombre"></p>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <button class="btn btn-primary btn-small" onclick="app.abrirFormPago()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span data-i18n="btn.register_payment">Registrar Pago</span>
+                    </button>
+                    <span class="close" data-modal="modal-pagos">&times;</span>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="pagos-total" class="pagos-total"></div>
+                <div id="pagos-lista" class="familiares-lista"><p data-i18n="msg.loading">Cargando...</p></div>
+                <div id="form-pago-container" style="display:none;" class="form-familiar-container">
+                    <div class="form-section-label" style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        <span data-i18n="pay.new">Nuevo Pago</span>
+                    </div>
+                    <form id="form-pago">
+                        <div class="form-row">
+                            <div class="form-group"><label data-i18n="pay.amount_req">Monto <span class="req">*</span></label><input type="number" id="pago-monto" step="0.01" min="0.01" placeholder="0.00" required></div>
+                            <div class="form-group"><label data-i18n="pay.date_req">Fecha <span class="req">*</span></label><input type="date" id="pago-fecha" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label data-i18n="pay.method_label">Método de Pago</label>
+                                <select id="pago-metodo">
+                                    <option value="efectivo" data-i18n="pay.method_cash">Efectivo</option>
+                                    <option value="transferencia" data-i18n="pay.method_transfer">Transferencia</option>
+                                    <option value="tarjeta" data-i18n="pay.method_card">Tarjeta</option>
+                                    <option value="cheque" data-i18n="pay.method_check">Cheque</option>
+                                </select>
+                            </div>
+                            <div class="form-group"><label data-i18n="pay.reference">Referencia</label><input type="text" id="pago-referencia" placeholder="Nº de comprobante..." data-i18n-ph="pay.reference_ph"></div>
+                        </div>
+                        <div class="form-group full-width"><label data-i18n="pay.concept">Concepto</label><input type="text" id="pago-concepto" placeholder="Ej: Mantenimiento anual..." data-i18n-ph="pay.concept_ph"></div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="app.cancelarFormPago()">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                <span data-i18n="btn.cancel">Cancelar</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                                <span data-i18n="btn.save_payment">Guardar Pago</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ONBOARDING OVERLAY -->
+    <div id="onboarding-overlay" class="onboarding-overlay" style="display:none;">
+        <div class="onboarding-modal">
+            <div class="onboarding-header">
+                <div class="onboarding-header-inner">
+                    <div class="onboarding-logo"><img src="../../assets/icon.png" alt="Memorix" style="width:100%;height:100%;object-fit:contain;border-radius:14px;"></div>
+                    <div>
+                        <h2 data-i18n="ob.welcome">Bienvenido a Memorix</h2>
+                        <p data-i18n="ob.welcome_sub">Sistema de gestión de cementerio · Configuración inicial</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 1: Preferencias -->
+            <div class="onboarding-step active" data-step="1">
+                <h3 data-i18n="ob.step2_title">Preferencias del sistema</h3>
+                <p data-i18n="ob.step2_desc">Ajusta el aspecto y comportamiento de Memorix.</p>
+                <div class="onboarding-form">
+                    <div class="onboarding-field">
+                        <label data-i18n="ob.lang_label">Idioma / Language</label>
+                        <div class="onboarding-lang-picker">
+                            <label class="lang-option" id="ob-lang-en">
+                                <input type="radio" name="ob-lang" value="en" checked>
+                                <div class="lang-preview">
+                                    <span class="lang-flag">🇬🇧</span>
+                                    <span class="lang-name">English</span>
+                                </div>
+                            </label>
+                            <label class="lang-option" id="ob-lang-es">
+                                <input type="radio" name="ob-lang" value="es">
+                                <div class="lang-preview">
+                                    <span class="lang-flag">🇪🇸</span>
+                                    <span class="lang-name">Español</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="onboarding-field">
+                        <label data-i18n="cfg.theme">Tema visual</label>
+                        <div class="onboarding-theme-picker">
+                            <label class="theme-option" data-theme-val="light">
+                                <input type="radio" name="ob-theme" value="light" checked>
+                                <div class="theme-preview theme-preview-light">
+                                    <div class="tp-sidebar"></div><div class="tp-content"><div class="tp-card"></div><div class="tp-card"></div></div>
+                                </div>
+                                <span data-i18n="cfg.theme_light">Claro</span>
+                            </label>
+                            <label class="theme-option" data-theme-val="dark">
+                                <input type="radio" name="ob-theme" value="dark">
+                                <div class="theme-preview theme-preview-dark">
+                                    <div class="tp-sidebar"></div><div class="tp-content"><div class="tp-card"></div><div class="tp-card"></div></div>
+                                </div>
+                                <span data-i18n="cfg.theme_dark">Oscuro</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="onboarding-field">
+                        <label data-i18n="cfg.records_page">Registros por página</label>
+                        <select id="ob-records">
+                            <option value="25" data-i18n="ob.records_25">25 registros</option>
+                            <option value="50" selected data-i18n="ob.records_50">50 registros (recomendado)</option>
+                            <option value="100" data-i18n="ob.records_100">100 registros</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 2: Organización -->
+            <div class="onboarding-step" data-step="2">
+                <div class="onboarding-step-icon" style="background:#eff6ff;color:#3b82f6">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="32" height="32"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <h3 data-i18n="ob.step1_title">Datos de tu organización</h3>
+                <p data-i18n="ob.step1_desc">Estos datos aparecerán en los reportes PDF y documentos generados.</p>
+                <div class="onboarding-form">
+                    <div class="onboarding-field">
+                        <label data-i18n="ob.org_name_label">Nombre del Cementerio / Organización *</label>
+                        <input type="text" id="ob-nombre" placeholder="Ej: Cementerio Municipal San José" data-i18n-ph="ob.org_name_ph" maxlength="80">
+                    </div>
+                    <div class="onboarding-row">
+                        <div class="onboarding-field">
+                            <label data-i18n="cfg.org_address">Dirección</label>
+                            <input type="text" id="ob-direccion" placeholder="Ej: Calle Mayor 12, Ciudad" data-i18n-ph="cfg.org_ph_address">
+                        </div>
+                        <div class="onboarding-field">
+                            <label data-i18n="cfg.org_phone_label">Teléfono</label>
+                            <input type="text" id="ob-telefono" placeholder="Ej: +34 900 000 000" data-i18n-ph="cfg.org_ph_phone">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Paso 3 -->
+            <div class="onboarding-step" data-step="3">
+                <div class="onboarding-step-icon" style="background:#faf5ff;color:#8b5cf6">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="32" height="32"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </div>
+                <h3 data-i18n="ob.step3_title">¡Todo listo!</h3>
+                <p data-i18n="ob.step3_desc">Memorix está configurado y listo para usar. Aquí un resumen de lo que puedes hacer:</p>
+                <div class="onboarding-features">
+                    <div class="ob-feature">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        <span data-i18n="ob.feat1">Registrar difuntos y asignarlos a parcelas</span>
+                    </div>
+                    <div class="ob-feature">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        <span data-i18n="ob.feat2">Gestionar parcelas y su estado de ocupación</span>
+                    </div>
+                    <div class="ob-feature">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        <span data-i18n="ob.feat3">Registrar pagos y generar reportes PDF</span>
+                    </div>
+                    <div class="ob-feature">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span data-i18n="ob.feat4">Exportar datos a CSV y Excel</span>
+                    </div>
+                </div>
+
+                <!-- Aviso datos de ejemplo -->
+                <div class="ob-sample-notice">
+                    <div class="ob-sample-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+                    </div>
+                    <div>
+                        <p class="ob-sample-title" data-i18n="ob.sample_title">Datos de ejemplo incluidos</p>
+                        <p class="ob-sample-desc" data-i18n="ob.sample_desc">Hemos añadido 10 parcelas y 4 difuntos de muestra para que puedas explorar la app. Puedes borrarlos cuando quieras desde Configuración.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="onboarding-footer">
+                <div class="onboarding-dots">
+                    <span class="ob-dot active" data-dot="1"></span>
+                    <span class="ob-dot" data-dot="2"></span>
+                    <span class="ob-dot" data-dot="3"></span>
+                </div>
+                <div class="onboarding-actions">
+                    <button class="btn btn-secondary" id="ob-back" style="display:none;" onclick="app.onboardingPrev()" data-i18n="btn.back">Atrás</button>
+                    <button class="btn btn-primary" id="ob-next" onclick="app.onboardingNext()" data-i18n="ob.next">Siguiente →</button>
+                    <button class="btn btn-primary" id="ob-finish" style="display:none;" onclick="app.onboardingFinish()" data-i18n="ob.start">Comenzar →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../i18n.js"></script>
+    <script src="../scripts/main.js"></script>
+</body>
+</html>
