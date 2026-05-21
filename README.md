@@ -8,12 +8,12 @@
 
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square&logo=windows)](https://github.com/jopasma7/Memorix/releases)
 [![Version](https://img.shields.io/badge/Version-1.0.0-22c55e?style=flat-square)](https://github.com/jopasma7/Memorix/releases)
-[![License](https://img.shields.io/badge/License-Commercial-f59e0b?style=flat-square)](https://memorix.lemonsqueezy.com/checkout)
+[![License](https://img.shields.io/badge/License-Commercial-f59e0b?style=flat-square)](https://lottuscompany.lemonsqueezy.com/checkout/buy/1068946)
 [![Language](https://img.shields.io/badge/Language-EN%20%7C%20ES-6366f1?style=flat-square)](#)
 
 **Memorix** is a desktop application that simplifies every aspect of cemetery administration — from plot management to deceased records, PDF reports, and real-time statistics. Built for efficiency, designed for professionals.
 
-[**Website**](https://jopasma7.github.io/Memorix/) &nbsp;·&nbsp; [**Buy Now — €129.99 / year**](https://memorix.lemonsqueezy.com/checkout) &nbsp;·&nbsp; [Download](https://github.com/jopasma7/Memorix/releases/latest) &nbsp;·&nbsp; [Support](#support)
+[**Website**](https://lottuscompany.com/memorix/) &nbsp;·&nbsp; [**Buy Now — €129.99 / year**](https://lottuscompany.lemonsqueezy.com/checkout/buy/1068946) &nbsp;·&nbsp; [Download](https://github.com/jopasma7/Memorix/releases/latest) &nbsp;·&nbsp; [Support](#support)
 
 ---
 
@@ -117,9 +117,12 @@ Managing a cemetery involves dozens of moving parts — tracking which plots are
 
 ### 1. Purchase a License
 
-Go to the store and complete the purchase:
+Go to the store and choose your plan:
 
-**[memorix.lemonsqueezy.com/checkout](https://memorix.lemonsqueezy.com/checkout)**
+| Plan | Price | Link |
+|---|---|---|
+| **Annual** | €129.99 / year | [Buy Annual](https://lottuscompany.lemonsqueezy.com/checkout/buy/1068946) |
+| **Monthly** | €14.99 / month | [Buy Monthly](https://lottuscompany.lemonsqueezy.com/checkout/buy/1075287) |
 
 You will receive a license key by email immediately after payment.
 
@@ -140,8 +143,9 @@ Run the installer, open Memorix, and enter your license key when prompted. That'
 | Plan | Price | Includes |
 |---|---|---|
 | **Annual License** | €129.99 / year | All features, automatic updates, email support |
+| **Monthly License** | €14.99 / month | All features, automatic updates, email support |
 
-A **7-day free trial** is included — no payment required to evaluate the software.
+A **1-day free trial** is included — no payment required to evaluate the software.
 
 ---
 
@@ -163,7 +167,7 @@ Response within 1–2 business days.
 - Real-time dashboard with statistics and activity feed
 - English and Spanish interface
 - Light and dark theme
-- License system with annual subscription
+- License system with annual and monthly plans
 - Automatic updates
 
 ---
@@ -172,6 +176,6 @@ Response within 1–2 business days.
 
 Made with care for cemetery administrators everywhere.
 
-**[Get Memorix →](https://memorix.lemonsqueezy.com/checkout)**
+**[Get Memorix →](https://lottuscompany.com/memorix/)**
 
 </div>
