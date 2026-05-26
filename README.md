@@ -7,13 +7,13 @@
 ### Professional Cemetery Management Software
 
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square&logo=windows)](https://github.com/jopasma7/Memorix/releases)
-[![Version](https://img.shields.io/badge/Version-1.0.0-22c55e?style=flat-square)](https://github.com/jopasma7/Memorix/releases)
-[![License](https://img.shields.io/badge/License-Commercial-f59e0b?style=flat-square)](https://lottuscompany.lemonsqueezy.com/checkout/buy/1068946)
+[![Version](https://img.shields.io/badge/Version-1.0.2-22c55e?style=flat-square)](https://github.com/jopasma7/Memorix/releases)
+[![License](https://img.shields.io/badge/License-Commercial-f59e0b?style=flat-square)](https://lottuscompany.lemonsqueezy.com/checkout/buy/d5800eb1-5022-4ed9-90f1-2019298f95cf)
 [![Language](https://img.shields.io/badge/Language-EN%20%7C%20ES-6366f1?style=flat-square)](#)
 
 **Memorix** is a desktop application that simplifies every aspect of cemetery administration — from plot management to deceased records, PDF reports, and real-time statistics. Built for efficiency, designed for professionals.
 
-[**Website**](https://lottuscompany.com/memorix/) &nbsp;·&nbsp; [**Buy Now — €129.99 / year**](https://lottuscompany.lemonsqueezy.com/checkout/buy/1068946) &nbsp;·&nbsp; [Download](https://github.com/jopasma7/Memorix/releases/latest) &nbsp;·&nbsp; [Support](#support)
+[**Website**](https://lottuscompany.com/memorix/) &nbsp;·&nbsp; [**Buy Now — €49.99 / year**](https://lottuscompany.lemonsqueezy.com/checkout/buy/d5800eb1-5022-4ed9-90f1-2019298f95cf) &nbsp;·&nbsp; [Download](https://github.com/jopasma7/Memorix/releases/latest) &nbsp;·&nbsp; [Support](#support)
 
 ---
 
@@ -121,8 +121,8 @@ Go to the store and choose your plan:
 
 | Plan | Price | Link |
 |---|---|---|
-| **Annual** | €129.99 / year | [Buy Annual](https://lottuscompany.lemonsqueezy.com/checkout/buy/1068946) |
-| **Monthly** | €14.99 / month | [Buy Monthly](https://lottuscompany.lemonsqueezy.com/checkout/buy/1075287) |
+| **Annual** | €49.99 / year | [Buy Annual](https://lottuscompany.lemonsqueezy.com/checkout/buy/d5800eb1-5022-4ed9-90f1-2019298f95cf) |
+| **Monthly** | €4.99 / month | [Buy Monthly](https://lottuscompany.lemonsqueezy.com/checkout/buy/7be831b7-c5b5-4ee5-8ed4-235dac29ee3a) |
 
 You will receive a license key by email immediately after payment.
 
@@ -142,8 +142,8 @@ Run the installer, open Memorix, and enter your license key when prompted. That'
 
 | Plan | Price | Includes |
 |---|---|---|
-| **Annual License** | €129.99 / year | All features, automatic updates, email support |
-| **Monthly License** | €14.99 / month | All features, automatic updates, email support |
+| **Annual License** | €49.99 / year | All features, automatic updates, email support |
+| **Monthly License** | €4.99 / month | All features, automatic updates, email support |
 
 A **1-day free trial** is included — no payment required to evaluate the software.
 
