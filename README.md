@@ -7,7 +7,7 @@
 ### Professional Cemetery Management Software
 
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=flat-square&logo=windows)](https://github.com/jopasma7/Memorix/releases)
-[![Version](https://img.shields.io/badge/Version-1.0.2-22c55e?style=flat-square)](https://github.com/jopasma7/Memorix/releases)
+[![Version](https://img.shields.io/badge/Version-1.0.3-22c55e?style=flat-square)](https://github.com/jopasma7/Memorix/releases)
 [![License](https://img.shields.io/badge/License-Commercial-f59e0b?style=flat-square)](https://lottuscompany.lemonsqueezy.com/checkout/buy/d5800eb1-5022-4ed9-90f1-2019298f95cf)
 [![Language](https://img.shields.io/badge/Language-EN%20%7C%20ES-6366f1?style=flat-square)](#)
 
